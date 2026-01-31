@@ -25,7 +25,7 @@ class _DoneScreenState extends State<DoneScreen>
   static const int _releaseVizStartDelayMs = 300;
   static const int _baseTimelineMs = 3200;
   static const int _autoExitDelayMs = 5000;
-  static const Color _ctaColor = Color(0xFF888888);
+  static const Color _ctaColor = Color(0xFFB0B0B0);
   static const Color _doneBaseColor = Color(0xFFE0E0E0);
   static const Color _doneHoverColor = Color(0xFFCCCCCC);
   late int _timelineMs;
@@ -56,7 +56,7 @@ class _DoneScreenState extends State<DoneScreen>
     _titleAnimation = _interval(0, 300, Curves.easeOutCubic);
     _barsAnimation = _interval(300, 600, Curves.easeOut);
     _subtextAnimation = _interval(0, 300, Curves.easeOut);
-    _rememberAnimation = _interval(2100, 2400, Curves.easeOut);
+    _rememberAnimation = _interval(1200, 1500, Curves.easeOut);
     _doneAppearAnimation = _interval(600, 800, Curves.easeOut);
     _doneEnableAnimation = _interval(
       doneEnableStartMs,
@@ -311,11 +311,24 @@ class _DoneScreenState extends State<DoneScreen>
                   ),
                 ),
                 const Spacer(),
-                _buildStaged(
+                AnimatedBuilder(
                   animation: _rememberAnimation,
-                  offsetY: 0,
+                  builder: (context, child) {
+                    final value = _isExiting ? 0.0 : _rememberAnimation.value;
+                    final opacity = value.clamp(0.0, 1.0);
+                    return IgnorePointer(
+                      ignoring: value == 0,
+                      child: Opacity(
+                        opacity: opacity,
+                        child: Transform.translate(
+                          offset: Offset(0, (1 - value) * 0),
+                          child: child,
+                        ),
+                      ),
+                    );
+                  },
                   child: Padding(
-                    padding: const EdgeInsets.only(top: 6, bottom: 12),
+                    padding: const EdgeInsets.only(top: 4, bottom: 8),
                     child: TextButton(
                       onPressed: _noteSaved ? null : _openRememberModal,
                       style: TextButton.styleFrom(
