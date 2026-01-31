@@ -7,6 +7,7 @@ import '../../domain/models/release_entry.dart';
 
 class ReleaseStorage {
   static const _entriesKey = 'release_entries';
+  static const _privacyHintSeenKey = 'release_privacy_hint_seen';
 
   Future<List<ReleaseEntry>> loadEntries() async {
     final prefs = await SharedPreferences.getInstance();
@@ -47,5 +48,15 @@ class ReleaseStorage {
         .map((item) => jsonEncode(item.toJson()))
         .toList();
     await prefs.setStringList(_entriesKey, encoded);
+  }
+
+  Future<bool> isPrivacyHintSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_privacyHintSeenKey) ?? false;
+  }
+
+  Future<void> markPrivacyHintSeen() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_privacyHintSeenKey, true);
   }
 }

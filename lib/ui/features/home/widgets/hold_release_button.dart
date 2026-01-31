@@ -27,6 +27,9 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   DateTime? _pressStartTime;
   late final Ticker _holdTicker;
   final Stopwatch _holdStopwatch = Stopwatch();
+  late final AnimationController _breathController;
+  late final Animation<double> _breathScale;
+  late final Animation<double> _breathOpacity;
   late final AnimationController _releaseController;
   Duration _lastTickElapsed = Duration.zero;
   double _rotationAngle = 0.0;
@@ -36,14 +39,31 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   double _releaseStartRadius = 0.0;
   double _releaseStartOpacity = 0.0;
   double _releaseStartStroke = 0.0;
+  double _releaseStartSweep = 0.0;
 
   static const double _ringSize = 200.0;
   static const double _ringInset = 10.0;
   static const double _baseRadius = _ringSize / 2 - _ringInset;
   static const double _baseStroke = 5.0;
-  static const double _maxStrokeDelta = 2.0;
-  static const double _opacityMax = 0.8;
+  static const double _holdSweep = 2 * math.pi * 0.78;
+  static const Duration _breathDuration = Duration(seconds: 12);
   static const Duration _releaseDuration = Duration(milliseconds: 400);
+  static const Duration _releaseCloseDuration = Duration(milliseconds: 120);
+  static const double _breathScaleMax = 1.12;
+  static const double _breathOpacityMin = 0.6;
+  static const double _breathOpacityMax = 0.75;
+  static const double _releaseScaleMin = 0.85;
+  static const double _rotationCycleSeconds = 6.0;
+  static const double _rotationStage1Seconds = 0.6;
+  static const double _rotationStage2Seconds = 1.8;
+  static const double _rotationStage3Seconds = 1.2;
+  static const double _rotationStage4Seconds = 2.4;
+  static const double _rotationStartDegPerSec = 80.0;
+  static const double _rotationPeakDegPerSec = 160.0;
+  static const double _rotationMidLowDegPerSec = 70.0;
+  static const double _rotationMidHighDegPerSec = 140.0;
+  static const double _rotationEndDegPerSec = 60.0;
+
 
   @override
   void initState() {
@@ -64,6 +84,55 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
         setState(() {});
       }
     });
+    _breathController = AnimationController(
+      vsync: this,
+      duration: _breathDuration,
+    );
+    _breathScale = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: 1.0, end: _breathScaleMax)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 4,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween<double>(_breathScaleMax),
+        weight: 1,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: _breathScaleMax, end: 1.0)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 6,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween<double>(1.0),
+        weight: 1,
+      ),
+    ]).animate(_breathController);
+    _breathOpacity = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(begin: _breathOpacityMin, end: _breathOpacityMax)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 4,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween<double>(_breathOpacityMax),
+        weight: 1,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(begin: _breathOpacityMax, end: _breathOpacityMin)
+            .chain(CurveTween(curve: Curves.easeInOut)),
+        weight: 6,
+      ),
+      TweenSequenceItem(
+        tween: ConstantTween<double>(_breathOpacityMin),
+        weight: 1,
+      ),
+    ]).animate(_breathController)
+      ..addListener(() {
+        if (mounted && _isPressed) {
+          setState(() {});
+        }
+      });
     _releaseController = AnimationController(
       vsync: this,
       duration: _releaseDuration,
@@ -82,7 +151,6 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
           }
           final seconds = _pendingReleaseSeconds;
           _pendingReleaseSeconds = null;
-          HapticFeedback.mediumImpact();
           if (seconds != null) {
             widget.onRelease(seconds);
           }
@@ -93,6 +161,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   @override
   void dispose() {
     _holdTicker.dispose();
+    _breathController.dispose();
     _releaseController.dispose();
     super.dispose();
   }
@@ -109,6 +178,9 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
       ..start();
     _lastTickElapsed = Duration.zero;
     _rotationAngle = 0.0;
+    _breathController
+      ..value = 0.0
+      ..repeat();
     if (!_holdTicker.isActive) {
       _holdTicker.start();
     }
@@ -124,12 +196,14 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
     if (_holdTicker.isActive) {
       _holdTicker.stop();
     }
+    _breathController.stop();
 
     final holdSeconds = _holdStopwatch.elapsedMilliseconds / 1000.0;
     _releaseStartRotation = _rotationAngle;
     _releaseStartRadius = _radiusForSeconds(holdSeconds);
     _releaseStartOpacity = _opacityForSeconds(holdSeconds);
     _releaseStartStroke = _strokeForSeconds(holdSeconds);
+    _releaseStartSweep = _holdSweep;
 
     HapticFeedback.lightImpact();
 
@@ -145,32 +219,65 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   }
 
   double _rotationSpeedForSeconds(double t) {
-    const double baseRotationsPerSecond = 0.55;
-    const double modulationAmplitude = 0.15;
-    const double modulationPeriodSeconds = 6.0;
-    final double baseSpeed = 2 * math.pi * baseRotationsPerSecond;
-
-    final double modulation = 1.0 +
-        modulationAmplitude *
-            math.sin((2 * math.pi * t) / modulationPeriodSeconds);
-    final double ramp = (t / 1.0).clamp(0.0, 1.0);
-    final double easedRamp = Curves.easeOut.transform(ramp);
-
-    return baseSpeed * modulation * (0.5 + 0.5 * easedRamp);
+    final double phase = t % _rotationCycleSeconds;
+    double speedDeg;
+    if (phase <= _rotationStage1Seconds) {
+      final double p = (phase / _rotationStage1Seconds).clamp(0.0, 1.0);
+      speedDeg = lerpDouble(
+            _rotationStartDegPerSec,
+            _rotationPeakDegPerSec,
+            Curves.easeOut.transform(p),
+          ) ??
+          _rotationPeakDegPerSec;
+    } else if (phase <= _rotationStage1Seconds + _rotationStage2Seconds) {
+      final double p =
+          ((phase - _rotationStage1Seconds) / _rotationStage2Seconds)
+              .clamp(0.0, 1.0);
+      speedDeg = lerpDouble(
+            _rotationPeakDegPerSec,
+            _rotationMidLowDegPerSec,
+            Curves.easeInOut.transform(p),
+          ) ??
+          _rotationMidLowDegPerSec;
+    } else if (phase <=
+        _rotationStage1Seconds + _rotationStage2Seconds + _rotationStage3Seconds) {
+      final double p =
+          ((phase - _rotationStage1Seconds - _rotationStage2Seconds) /
+                  _rotationStage3Seconds)
+              .clamp(0.0, 1.0);
+      speedDeg = lerpDouble(
+            _rotationMidLowDegPerSec,
+            _rotationMidHighDegPerSec,
+            Curves.easeInOut.transform(p),
+          ) ??
+          _rotationMidHighDegPerSec;
+    } else {
+      final double p =
+          ((phase - _rotationStage1Seconds - _rotationStage2Seconds -
+                      _rotationStage3Seconds) /
+                  _rotationStage4Seconds)
+              .clamp(0.0, 1.0);
+      speedDeg = lerpDouble(
+            _rotationMidHighDegPerSec,
+            _rotationEndDegPerSec,
+            Curves.easeInOut.transform(p),
+          ) ??
+          _rotationEndDegPerSec;
+    }
+    return speedDeg * math.pi / 180.0;
   }
 
   double _radiusForSeconds(double t) {
-    final double phase = (2 * math.pi * t) / 4.5;
-    return _baseRadius * (1 + 0.04 * math.sin(phase));
+    final double scale = _breathScale.value;
+    return _baseRadius * scale;
   }
 
   double _strokeForSeconds(double t) {
-    final double thickT = ((t - 1.0) / 0.4).clamp(0.0, 1.0);
-    return _baseStroke + _maxStrokeDelta * thickT;
+    return _baseStroke;
   }
 
   double _opacityForSeconds(double t) {
-    return math.min(_opacityMax, t / 0.8);
+    return _breathOpacity.value;
   }
 
   _RingVisual _currentRing() {
@@ -181,18 +288,39 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
         radius: _radiusForSeconds(t),
         strokeWidth: _strokeForSeconds(t),
         opacity: _opacityForSeconds(t),
+        sweep: _holdSweep,
       );
     }
 
     if (_isReleasing) {
       final double t = _releaseController.value;
+      final double closePhaseT =
+          (_releaseCloseDuration.inMilliseconds / _releaseDuration.inMilliseconds)
+              .clamp(0.0, 1.0);
+      if (t <= closePhaseT && closePhaseT > 0) {
+        final double easedT =
+            Curves.easeOutCubic.transform((t / closePhaseT).clamp(0.0, 1.0));
+        return _RingVisual(
+          rotation: _releaseStartRotation,
+          radius: _releaseStartRadius,
+          strokeWidth: _releaseStartStroke,
+          opacity: _releaseStartOpacity,
+          sweep: lerpDouble(_releaseStartSweep, 2 * math.pi, easedT) ??
+              _releaseStartSweep,
+        );
+      }
+      final double collapseT =
+          ((t - closePhaseT) / (1 - closePhaseT)).clamp(0.0, 1.0);
       return _RingVisual(
         rotation: _releaseStartRotation,
-        radius: lerpDouble(_releaseStartRadius, _baseRadius * 1.15, t) ??
+        radius: lerpDouble(
+                _releaseStartRadius, _baseRadius * _releaseScaleMin, collapseT) ??
             _releaseStartRadius,
-        strokeWidth: _releaseStartStroke,
-        opacity: lerpDouble(_releaseStartOpacity, 0.0, t) ??
+        strokeWidth: lerpDouble(_releaseStartStroke, 0.0, collapseT) ??
+            _releaseStartStroke,
+        opacity: lerpDouble(_releaseStartOpacity, 0.0, collapseT) ??
             _releaseStartOpacity,
+        sweep: 2 * math.pi,
       );
     }
 
@@ -201,6 +329,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
       radius: _baseRadius,
       strokeWidth: _baseStroke,
       opacity: 0.0,
+      sweep: 0.0,
     );
   }
 
@@ -277,12 +406,14 @@ class _RingVisual {
   final double radius;
   final double strokeWidth;
   final double opacity;
+  final double sweep;
 
   const _RingVisual({
     required this.rotation,
     required this.radius,
     required this.strokeWidth,
     required this.opacity,
+    required this.sweep,
   });
 }
 
@@ -302,11 +433,10 @@ class _ProgressRingPainter extends CustomPainter {
       ..strokeWidth = ring.strokeWidth
       ..strokeCap = StrokeCap.round;
 
-    const double sweep = 2 * math.pi * 0.78;
     canvas.drawArc(
       Rect.fromCircle(center: center, radius: ring.radius),
       -math.pi / 2 + ring.rotation,
-      sweep,
+      ring.sweep,
       false,
       ringPaint,
     );
