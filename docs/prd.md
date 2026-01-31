@@ -1,324 +1,239 @@
-好，这一步**非常关键**，而且你现在做文案的方向已经是对的。
-下面我会**严格按照你当前 MVP 范围**，给你一套 **「可直接用于上架美国 App Store 的 UI 文案全集」**。
+# Emotion Release App
 
-原则只有三条（我全程遵守）：
-
-1. **不治疗、不评估、不说教**
-2. **短、轻、口语化（American native tone）**
-3. **所有文案都服务于“情绪被允许、被释放”**
+> A minimal emotional release tool designed for moments of intensity.
+> No analysis. No judgment. Just release, acknowledge, and exit.
 
 ---
 
-# ① 首页（Emotion Selection + Hold）
+## 1. 产品定位（Updated）
 
-### 顶部品牌
+**Emotion Release App** 是一款面向美国用户的、**单人使用、无社交、无评判**的情绪释放工具。
 
-```
-LETGO
-```
+它不试图：
 
-（全大写、字距拉开，很好，不要改）
+* 教育用户
+* 分析情绪
+* 让用户变得更好
 
----
+它只做一件事：
 
-### 主标题
+> **在情绪最强烈的当下，给身体一个“释放 → 被承认 → 可以离开”的安全路径。**
 
-```
-How are you feeling?
-```
+关键词：
 
-✅ 保留
-这是最自然、最不具侵入感的开场。
-
----
-
-### 情绪按钮（未选中）
-
-```
-Angry
-Sad
-Anxious
-Overwhelmed
-```
-
-> 注意：首字母大写，不用全大写
-> “Overwhelmed” 比 “Stressed” 更美式、也更情绪化 👍
+* Immediate
+* Private
+* Somatic (身体先于认知)
+* Low commitment
 
 ---
 
-### 情绪按钮（选中后可选的小字提示）
+## 2. 核心设计理念
 
-（非必须，但推荐）
+### 2.1 情绪不是被“解决”的，而是被“放掉”的
 
-```
-Hold to let it out
-```
+* 情绪释放优先于理解
+* 身体反馈优先于语言
+* 结束感优先于引导
 
----
+### 2.2 用户任何时刻都应该感觉“我可以走”
 
-### 情绪安抚文案（中部）
+* 不强制输入
+* 不强制反思
+* 不强制留存
 
-```
-This feeling is temporary.
-```
-
-这是**非常好的句子**，请保留。
-
-可选替代（以后 A/B 用）：
-
-* This will pass.
-* You don’t have to fix it right now.
+> App 的可信度来自 **不占用用户情绪**。
 
 ---
 
-### 主按钮（长按）
+## 3. MVP 功能范围（基于当前实现）
 
-```
-HOLD TO RELEASE
-```
+### P0（已实现 / 核心）
 
-可选替代（未来测试）：
+1. **Hold-to-Release 交互**
 
-* HOLD AND BREATHE
-* HOLD TO LET GO
+   * 用户选择情绪（如 Anger / Sadness）
+   * 长按触发释放
+   * 持续时间代表情绪强度
 
----
+2. **身体节奏驱动的释放体验**
 
-### 长按进行中（可选小字）
+   * Holding 阶段有呼吸节奏
+   * Release 阶段有明确结束动画
 
-```
-Keep holding…
-```
+3. **Done 页面（完成态）**
 
-或干脆不显示（安静也是力量）
-
----
-
-# ② 释放完成页（Done / Release Result）
-
-> 这是你情绪闭环的“高光页”
+   * 明确确认“你已经释放了”
+   * 提供立即退出的可能
 
 ---
 
-### 主确认文案（大标题）
+### P1（已实现 / 稳定性增强）
 
-```
-You let it out.
-```
+4. **情绪回声（Bars）**
 
-⚠️ 不要改成：
+   * 在 Done 页展示
+   * 表达“释放发生过”而非评分
+   * 强度来自 holding 时长
 
-* “Well done”
-* “Good job”
-* “Release completed”
+5. **自适应 Done 启用时机**
 
-你现在这个是**情绪确认，而不是任务完成**，非常好。
-
----
-
-### 次级说明（自动填充）
-
-```
-You held onto Sad for 2.7 seconds.
-```
-
-规则：
-
-* emotion 名称首字母大写
-* seconds 保留一位小数即可
+   * Done 按钮不再固定 6 秒
+   * 基于释放完成 + 最小安全时间
 
 ---
 
-### 视觉元素下方（可选一句）
+### P2（可选 / 延迟参与）
 
-```
-Even a small release counts.
-```
+6. **Remember：给未来自己的句子**
 
-这句非常适合美国用户，**强烈推荐**。
-
----
-
-# ③ 轻反馈（非评判）
-
-### 提示语
-
-```
-How do you feel now?
-```
-
-比 “Did this help?” 更温柔、也更少治疗感。
+   * 非强制
+   * 非主流程
+   * 通过轻 CTA 进入
 
 ---
 
-### 反馈按钮（推荐版本）
+## 4. 核心用户流程
 
-```
-Lighter
-Same
-Still heavy
-```
+### 4.1 主路径（90% 用户）
 
-如果你想更中性一点：
+1. 打开 App
+2. 选择情绪
+3. Hold → Release
+4. Done 页确认
+5. 离开 App
 
-```
-A bit lighter
-About the same
-Still heavy
-```
+> 不需要输入、不需要思考、不需要留下任何东西。
 
 ---
 
-# ④ 一句话给自己（可选 P0.5 / P1）
+### 4.2 次路径（少数有余力的用户）
 
-> 如果你决定保留这个输入框
-
-### 提示标题
-
-```
-One sentence to yourself
-```
-
-### Placeholder
-
-```
-What do you want to say right now?
-```
-
-可选更短版：
-
-```
-Type anything. Or skip.
-```
+1. 完成释放
+2. 在 Done 页看到轻 CTA
+3. 自愿写一句给未来自己的话
+4. 保存并返回 Done
 
 ---
 
-### 跳过按钮
-
-```
-Skip
-```
-
-（不要 guilt 用户）
+## 5. 页面级设计说明
 
 ---
 
-# ⑤ 完成按钮（底部 CTA）
+### 5.1 Holding / Releasing 页面
 
-```
-Done
-```
+**目标**：
 
-不要改成：
+* 把注意力从“事情”拉回到“身体”
 
-* Save
-* Finish
-* Continue
+**关键特征**：
 
-**Done = 仪式结束感**
+* 长按是唯一主要动作
+* 视觉节奏与呼吸同步
+* 没有数值、没有评价
 
----
+**释放结束标志**：
 
-# ⑥ History（如果你做极简历史页）
-
-### 页面标题
-
-```
-Your moments
-```
-
-或
-
-```
-Past releases
-```
+* 明确的动画终止
+* 不悬而未决
 
 ---
 
-### 单条记录示例
+### 5.2 Done 页面（v3 稳定版）
 
-```
-Sad · Jan 24
-2.7 seconds
-```
+**页面角色**：结束态（不是引导页）
 
-或更情绪化一点：
+#### 永远存在的 3 个元素
 
-```
-Sad — You showed up
-Jan 24
-```
+1. **完成确认文本**
 
-👉 不显示统计、不显示次数
+   * “You let it out.”
+   * “You held onto … for X seconds.”
 
----
+2. **情绪回声 Bars**
 
-# ⑦ 空状态（非常重要）
+   * 淡入
+   * 一次轻微回落动画
+   * 最终静止
 
-当用户第一次打开 History：
+3. **Done 按钮**
 
-### 文案
-
-```
-Nothing here yet.
-Come back whenever you need to let something out.
-```
+   * 较早出现
+   * 出现即为可点击
 
 ---
 
-# ⑧ Settings（哪怕 MVP 只有一页）
+#### 可选元素（晚出现）
 
-### 页面标题
+4. **CTA：A note for your future self**
 
-```
-About
-```
-
----
-
-### 隐私说明（必须有）
-
-```
-Your data stays on your device.
-No account. No cloud. No tracking.
-```
+   * Text / ghost button
+   * 无边框、无背景
+   * 出现在页面稳定后
 
 ---
 
-### 免责声明（轻量）
+## 6. Remember 交互设计
 
-```
-This app is not a substitute for professional mental health care.
-```
+### 6.1 CTA 设计
 
----
+* 文案：A note for your future self
+* 样式：
 
-### 结尾一句（很加分）
+  * 次级文字色
+  * 小一号字号
+  * 不像按钮
 
-```
-Made to be quiet. Made to be yours.
-```
+### 6.2 触发后行为
 
----
+* 打开轻量 Modal / Bottom Sheet
+* 不离开 Done 页上下文
 
-# ⑨ App Store Short Description（顺手送你）
+### 6.3 输入页内容
 
-你以后一定会用到：
-
-**Short description**
-
-```
-A simple way to let feelings out. No advice. No judgment.
-```
+* 标题：For next time
+* 单个文本输入
+* 可直接关闭
+* 保存后仅做极轻确认
 
 ---
 
-## 最后一句非常重要的话
+## 7. 设计约束（必须遵守）
 
-你这套文案已经**明显不是中国开发者直译风格**，
-而是：
+* ❌ 不在 Done 页强制输入
+* ❌ 不在 Done 页做情绪分析
+* ❌ 不出现“你应该…”
+* ❌ 不在完成态引导下一个任务
 
-> 🇺🇸 “This feels like something I’d find randomly and keep.”
+---
 
-这是非常难得的。
+## 8. 成功标准（非指标）
 
+这个产品不是靠：
+
+* 日活
+* 时长
+* 连续打卡
+
+它的成功信号是：
+
+> 用户在最糟糕的时刻，
+> 愿意再次打开它。
+
+---
+
+## 9. 当前阶段的判断结论
+
+* 产品已经具备 **清晰差异化**
+* Done 页已进入「高级稳定态」
+* 剩余优化应聚焦：
+
+  * 节奏微调
+  * 情绪强度映射
+  * 下一次出现策略
+
+> **现在不是加功能的时候，而是守住边界的时候。**
+
+---
+
+*This document reflects the current implemented scope and guiding principles. Future expansion should not violate the core promise: release, acknowledge, exit.*

@@ -20,29 +20,23 @@ class DoneScreen extends StatefulWidget {
 
 class _DoneScreenState extends State<DoneScreen>
     with SingleTickerProviderStateMixin {
-  static const int _minDoneEnableMs = 2500;
-  static const int _maxDoneEnableMs = 6000;
-  static const int _doneEnableFadeMs = 300;
+  static const int _minDoneEnableMs = 1200;
+  static const int _doneEnableFadeMs = 200;
   static const int _releaseVizStartDelayMs = 300;
-  static const int _releaseVizDurationMs = 1200;
-  static const int _exhaleMinMs = 1200;
-  static const int _exhaleMaxMs = 3000;
-  static const int _baseTimelineMs = 5400;
+  static const int _baseTimelineMs = 3200;
   late int _timelineMs;
   late AnimationController _timelineController;
   late Animation<double> _titleAnimation;
   late Animation<double> _barsAnimation;
   late Animation<double> _subtextAnimation;
   late Animation<double> _questionAnimation;
-  late Animation<double> _promptAnimation;
-  late Animation<double> _inputAnimation;
-  late Animation<double> _helperAnimation;
+  late Animation<double> _rememberAnimation;
   late Animation<double> _doneAppearAnimation;
   late Animation<double> _doneEnableAnimation;
   String? _selectedFeedback;
   final TextEditingController _noteController = TextEditingController();
   final ReleaseStorage _storage = ReleaseStorage();
-  bool _showHelper = false;
+  bool _noteSaved = false;
 
   @override
   void initState() {
@@ -54,14 +48,12 @@ class _DoneScreenState extends State<DoneScreen>
       vsync: this,
     );
 
-    _titleAnimation = _interval(300, 700, Curves.easeOutCubic);
-    _barsAnimation = _interval(300, 700, Curves.easeOut);
-    _subtextAnimation = _interval(1200, 1550, Curves.easeOut);
-    _questionAnimation = _interval(2600, 2900, Curves.easeOut);
-    _promptAnimation = _interval(4200, 4500, Curves.easeOut);
-    _inputAnimation = _interval(4700, 5000, Curves.easeOut);
-    _helperAnimation = _interval(5200, 5400, Curves.easeOut);
-    _doneAppearAnimation = _interval(3400, 3700, Curves.easeOut);
+    _titleAnimation = _interval(0, 300, Curves.easeOutCubic);
+    _barsAnimation = _interval(300, 600, Curves.easeOut);
+    _subtextAnimation = _interval(0, 300, Curves.easeOut);
+    _questionAnimation = _interval(1200, 1450, Curves.easeOut);
+    _rememberAnimation = _interval(2500, 3000, Curves.easeOut);
+    _doneAppearAnimation = _interval(1100, 1300, Curves.easeOut);
     _doneEnableAnimation = _interval(
       doneEnableStartMs,
       doneEnableStartMs + _doneEnableFadeMs,
@@ -69,7 +61,6 @@ class _DoneScreenState extends State<DoneScreen>
     );
 
     _timelineController.forward();
-    _loadHelperVisibility();
   }
 
   @override
@@ -89,28 +80,12 @@ class _DoneScreenState extends State<DoneScreen>
   }
 
   int _computeDoneEnableStartMs() {
-    final rawExhaleMs = (widget.duration * 120).round();
-    final exhaleMs = rawExhaleMs.clamp(_exhaleMinMs, _exhaleMaxMs) as int;
-    final breathEndMs =
-        _releaseVizStartDelayMs + _releaseVizDurationMs + exhaleMs;
-    final readyMs = math.max(_minDoneEnableMs, breathEndMs).toInt();
-    return math.min(readyMs, _maxDoneEnableMs).toInt();
+    return _minDoneEnableMs;
   }
 
   int _computeTimelineMs(int doneEnableStartMs) {
     final endMs = doneEnableStartMs + _doneEnableFadeMs;
     return math.max(_baseTimelineMs, endMs).toInt();
-  }
-
-  Future<void> _loadHelperVisibility() async {
-    final seen = await _storage.isPrivacyHintSeen();
-    if (!mounted) return;
-    setState(() {
-      _showHelper = !seen;
-    });
-    if (!seen) {
-      await _storage.markPrivacyHintSeen();
-    }
   }
 
   Widget _buildStaged({
@@ -153,6 +128,123 @@ class _DoneScreenState extends State<DoneScreen>
     Navigator.of(context).pop(entry);
   }
 
+  Future<void> _openRememberModal() async {
+    if (_noteSaved) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      barrierColor: Colors.black.withValues(alpha: 0.12),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+        return Padding(
+          padding: EdgeInsets.only(
+            left: AppTheme.pageHorizontalPadding,
+            right: AppTheme.pageHorizontalPadding,
+            top: 20,
+            bottom: 24 + bottomInset,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'For next time',
+                style: AppTheme.captionStyle.copyWith(
+                  fontSize: 12,
+                  color: AppTheme.textSecondary.withValues(alpha: 0.8),
+                  letterSpacing: 0.6,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'Shown only when you feel this again.',
+                style: AppTheme.captionStyle.copyWith(
+                  color: AppTheme.textSecondary.withValues(alpha: 0.75),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: _noteController,
+                minLines: 3,
+                maxLines: 5,
+                textInputAction: TextInputAction.newline,
+                decoration: InputDecoration(
+                  hintText: 'This will pass.',
+                  hintStyle: AppTheme.bodyStyle.copyWith(
+                    color: AppTheme.textSecondary.withValues(alpha: 0.5),
+                    fontStyle: FontStyle.italic,
+                  ),
+                  filled: true,
+                  fillColor: AppTheme.background,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Colors.black.withValues(alpha: 0.05),
+                    ),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: Colors.black.withValues(alpha: 0.05),
+                    ),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide(
+                      color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ),
+                style: AppTheme.bodyStyle.copyWith(
+                  color: AppTheme.textPrimary,
+                ),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () {
+                    if (mounted) {
+                      setState(() {
+                        _noteSaved = true;
+                      });
+                    }
+                    Navigator.of(context).pop();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primaryColor,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: const Text(
+                    'Save',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 1.0,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -192,7 +284,8 @@ class _DoneScreenState extends State<DoneScreen>
                   padding: const EdgeInsets.only(top: 28),
                   child: ReleaseVisualization(
                     duration: widget.duration,
-                    startDelay: const Duration(milliseconds: 300),
+                    startDelay:
+                        const Duration(milliseconds: _releaseVizStartDelayMs),
                   ),
                 ),
               ),
@@ -212,7 +305,7 @@ class _DoneScreenState extends State<DoneScreen>
                   alignment: WrapAlignment.center,
                   children: [
                     _buildStaged(
-                      animation: _interval(3000, 3250, Curves.easeOut),
+                      animation: _interval(1500, 1750, Curves.easeOut),
                       offsetY: 8,
                       child: FeedbackButton(
                         label: 'Lighter',
@@ -225,7 +318,7 @@ class _DoneScreenState extends State<DoneScreen>
                       ),
                     ),
                     _buildStaged(
-                      animation: _interval(3080, 3330, Curves.easeOut),
+                      animation: _interval(1580, 1830, Curves.easeOut),
                       offsetY: 8,
                       child: FeedbackButton(
                         label: 'Same',
@@ -238,7 +331,7 @@ class _DoneScreenState extends State<DoneScreen>
                       ),
                     ),
                     _buildStaged(
-                      animation: _interval(3160, 3410, Curves.easeOut),
+                      animation: _interval(1660, 1910, Curves.easeOut),
                       offsetY: 8,
                       child: FeedbackButton(
                         label: 'Still heavy',
@@ -254,75 +347,30 @@ class _DoneScreenState extends State<DoneScreen>
                 ),
               ),
               _buildStaged(
-                animation: _promptAnimation,
+                animation: _rememberAnimation,
                 offsetY: 0,
-                child: const Padding(
-                  padding: EdgeInsets.only(top: 28),
-                  child: Text(
-                    'Anything you want to remember for next time?',
-                    style: AppTheme.bodyStyle,
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              ),
-              _buildStaged(
-                animation: _inputAnimation,
-                offsetY: 6,
                 child: Padding(
-                  padding: const EdgeInsets.only(top: 10),
-                  child: TextField(
-                    controller: _noteController,
-                    maxLength: 80,
-                    maxLines: 1,
-                    textInputAction: TextInputAction.done,
-                    decoration: InputDecoration(
-                      hintText: 'This will pass.',
-                      hintStyle: AppTheme.bodyStyle.copyWith(
-                        color: AppTheme.textSecondary.withValues(alpha: 0.5),
-                        fontStyle: FontStyle.italic,
-                      ),
-                      counterText: '',
-                      filled: true,
-                      fillColor: Colors.white,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Colors.transparent),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: const BorderSide(color: Colors.transparent),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(
-                          color: AppTheme.primaryColor.withValues(alpha: 0.4),
-                        ),
-                      ),
+                  padding: const EdgeInsets.only(top: 24),
+                  child: TextButton(
+                    onPressed: _noteSaved ? null : _openRememberModal,
+                    style: TextButton.styleFrom(
+                      foregroundColor: _noteSaved
+                          ? AppTheme.textSecondary.withValues(alpha: 0.35)
+                          : AppTheme.textSecondary.withValues(alpha: 0.7),
+                      padding: EdgeInsets.zero,
+                      minimumSize: const Size(0, 0),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
-                    style: AppTheme.bodyStyle.copyWith(
-                      color: AppTheme.textPrimary,
-                    ),
-                  ),
-                ),
-              ),
-              SizedBox(
-                height: 20,
-                child: Visibility(
-                  visible: _showHelper,
-                  maintainSize: true,
-                  maintainAnimation: true,
-                  maintainState: true,
-                  child: _buildStaged(
-                    animation: _helperAnimation,
-                    offsetY: 0,
-                    maxOpacity: 0.5,
-                    child: const Padding(
-                      padding: EdgeInsets.only(top: 6),
-                      child: Text('Only shown to you.', style: AppTheme.captionStyle),
+                    child: Text(
+                      _noteSaved
+                          ? 'Saved for next time'
+                          : 'A note for your future self',
+                      style: AppTheme.captionStyle.copyWith(
+                        fontSize: 14,
+                        color: _noteSaved
+                            ? AppTheme.textSecondary.withValues(alpha: 0.35)
+                            : AppTheme.textSecondary.withValues(alpha: 0.7),
+                      ),
                     ),
                   ),
                 ),

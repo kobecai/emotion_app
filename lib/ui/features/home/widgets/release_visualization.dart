@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import '../../../core/themes/app_theme.dart';
 
@@ -20,13 +18,23 @@ class ReleaseVisualization extends StatefulWidget {
 class _ReleaseVisualizationState extends State<ReleaseVisualization>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
+  late Animation<double> _appearAnimation;
+  late Animation<double> _breatheAnimation;
 
   @override
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 1200),
+      duration: const Duration(milliseconds: 700),
       vsync: this,
+    );
+    _appearAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.45, curve: Curves.easeOut),
+    );
+    _breatheAnimation = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.45, 1.0, curve: Curves.easeInOut),
     );
     if (widget.startDelay == Duration.zero) {
       _controller.forward();
@@ -48,7 +56,7 @@ class _ReleaseVisualizationState extends State<ReleaseVisualization>
   @override
   Widget build(BuildContext context) {
     final barCount = (widget.duration / 0.5).clamp(4, 10).toInt();
-    const lifePhaseEnd = 700 / 1200;
+    const heights = [62.0, 90.0, 52.0, 102.0, 72.0, 86.0, 58.0, 96.0, 66.0, 80.0];
 
     return SizedBox(
       height: 120,
@@ -56,34 +64,25 @@ class _ReleaseVisualizationState extends State<ReleaseVisualization>
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: List.generate(barCount, (index) {
-          final delay = index * 0.08;
-          final animation = CurvedAnimation(
-            parent: _controller,
-            curve: Interval(delay, 1.0, curve: Curves.easeOut),
-          );
-
-          final heights = [62.0, 90.0, 52.0, 102.0, 72.0, 86.0, 58.0, 96.0, 66.0, 80.0];
           final height = heights[index % heights.length];
 
           return AnimatedBuilder(
-            animation: animation,
+            animation: _controller,
             builder: (context, child) {
-              final t = animation.value;
-              final lifeFactor = t < lifePhaseEnd
-                  ? 1.0
-                  : (1 - ((t - lifePhaseEnd) / (1 - lifePhaseEnd)))
-                      .clamp(0.0, 1.0);
-              final wave = math.sin((t * 8 * math.pi) + index * 0.6);
-              final settle = Curves.easeOut.transform(t);
-              final heightFactor = (1 + 0.12 * wave * lifeFactor).clamp(0.7, 1.3);
+              final appear = _appearAnimation.value;
+              final breathe = _breatheAnimation.value;
+              final breatheScale = 1.06 - (0.06 * breathe);
 
-              return Container(
-                width: 8,
-                height: height * settle * heightFactor,
-                margin: const EdgeInsets.symmetric(horizontal: 3),
-                decoration: BoxDecoration(
-                  color: AppTheme.accentColor.withValues(alpha: 0.7),
-                  borderRadius: BorderRadius.circular(4),
+              return Opacity(
+                opacity: appear,
+                child: Container(
+                  width: 8,
+                  height: height * appear * breatheScale,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
+                  decoration: BoxDecoration(
+                    color: AppTheme.accentColor.withValues(alpha: 0.7),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                 ),
               );
             },
