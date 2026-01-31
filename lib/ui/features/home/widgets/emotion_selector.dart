@@ -16,20 +16,28 @@ class EmotionSelector extends StatelessWidget {
   Widget build(BuildContext context) {
     final emotions = Emotion.values;
 
-    return GridView.count(
-      crossAxisCount: 2,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 28,
-      crossAxisSpacing: 12,
-      childAspectRatio: 3.2,
-      children: emotions.map((emotion) {
-        return EmotionChip(
-          label: emotion.label,
-          isSelected: selectedEmotion != null && emotion == selectedEmotion,
-          onTap: () => onEmotionSelected(emotion),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final maxWidth = constraints.maxWidth;
+        final crossAxisCount = maxWidth >= 560 ? 3 : 2;
+        final childAspectRatio = maxWidth >= 560 ? 3.6 : 3.2;
+
+        return GridView.count(
+          crossAxisCount: crossAxisCount,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 28,
+          crossAxisSpacing: 12,
+          childAspectRatio: childAspectRatio,
+          children: emotions.map((emotion) {
+            return EmotionChip(
+              label: emotion.label,
+              isSelected: selectedEmotion != null && emotion == selectedEmotion,
+              onTap: () => onEmotionSelected(emotion),
+            );
+          }).toList(),
         );
-      }).toList(),
+      },
     );
   }
 }

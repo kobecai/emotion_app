@@ -25,7 +25,7 @@ class _DoneScreenState extends State<DoneScreen>
   static const int _doneEnableFadeMs = 200;
   static const int _releaseVizStartDelayMs = 300;
   static const int _baseTimelineMs = 3200;
-  static const int _autoExitDelayMs = 5000;
+  static const int _autoExitDelayMs = 4500;
   static const Color _ctaColor = Color(0xFFD0D0D0);
   static const Color _doneBaseColor = Color(0xFFE0E0E0);
   static const Color _doneHoverColor = Color(0xFFCCCCCC);
@@ -192,17 +192,11 @@ class _DoneScreenState extends State<DoneScreen>
                   ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(
-                      color: Color(0xFFE0E0E0),
-                      width: 1,
-                    ),
+                    borderSide: BorderSide(color: Color(0xFFE0E0E0), width: 1),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
-                    borderSide: BorderSide(
-                      color: Color(0xFFE0E0E0),
-                      width: 1,
-                    ),
+                    borderSide: BorderSide(color: Color(0xFFE0E0E0), width: 1),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
@@ -212,9 +206,7 @@ class _DoneScreenState extends State<DoneScreen>
                     ),
                   ),
                 ),
-                style: AppTheme.bodyStyle.copyWith(
-                  color: AppTheme.textPrimary,
-                ),
+                style: AppTheme.bodyStyle.copyWith(color: AppTheme.textPrimary),
               ),
               if (hasNotes) ...[
                 const SizedBox(height: 12),
@@ -248,8 +240,7 @@ class _DoneScreenState extends State<DoneScreen>
                     return TextButton(
                       onPressed: canSave
                           ? () async {
-                              final trimmedNote =
-                                  _noteController.text.trim();
+                              final trimmedNote = _noteController.text.trim();
                               final entry = ReleaseEntry(
                                 emotion: widget.emotion,
                                 durationSeconds: widget.duration,
@@ -313,167 +304,193 @@ class _DoneScreenState extends State<DoneScreen>
             });
             _autoExitTimer?.cancel();
           },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppTheme.pageHorizontalPadding,
-            ),
-            child: Column(
-              children: [
-                const Spacer(),
-                _buildStaged(
-                  animation: _titleAnimation,
-                  offsetY: 6,
-                  child: const Text(
-                    'You let it out.',
-                    style: AppTheme.headingStyle,
-                    textAlign: TextAlign.center,
-                  ),
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final availableHeight = constraints.maxHeight;
+              final topGap = (availableHeight * 0.08).clamp(24.0, 80.0);
+              final sectionGap = (availableHeight * 0.06).clamp(16.0, 32.0);
+              final bottomGap = (availableHeight * 0.06).clamp(16.0, 64.0);
+
+              return SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppTheme.pageHorizontalPadding,
                 ),
-                _buildStaged(
-                  animation: _subtextAnimation,
-                  offsetY: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 16),
-                    child: Text(
-                      'You held onto ${widget.emotion.label} for ${widget.duration.toStringAsFixed(1)} seconds.',
-                      style: AppTheme.bodyStyle.copyWith(fontSize: 17),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-                _buildStaged(
-                  animation: _barsAnimation,
-                  offsetY: 4,
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 28),
-                    child: ReleaseVisualization(
-                      duration: widget.duration,
-                      startDelay: const Duration(
-                        milliseconds: _releaseVizStartDelayMs,
-                      ),
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                AnimatedBuilder(
-                  animation: _rememberAnimation,
-                  builder: (context, child) {
-                    final value = _isExiting ? 0.0 : _rememberAnimation.value;
-                    final opacity = value.clamp(0.0, 1.0);
-                    return IgnorePointer(
-                      ignoring: value == 0,
-                      child: Opacity(
-                        opacity: opacity,
-                        child: Transform.translate(
-                          offset: Offset(0, (1 - value) * 0),
-                          child: child,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(minHeight: availableHeight),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(height: topGap),
+                      _buildStaged(
+                        animation: _titleAnimation,
+                        offsetY: 6,
+                        child: const Text(
+                          'You let it out.',
+                          style: AppTheme.headingStyle,
+                          textAlign: TextAlign.center,
                         ),
                       ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.only(top: 4, bottom: 8),
-                    child: _showNoteSavedHint
-                        ? Text(
-                            '✓ Note saved',
-                            style: AppTheme.captionStyle.copyWith(
-                              color: _ctaColor,
-                            ),
-                          )
-                        : TextButton.icon(
-                            onPressed: _entrySaved ? null : _openRememberModal,
-                            icon: Icon(
-                              Icons.edit_outlined,
-                              size: 14,
-                              color: _entrySaved
-                                  ? _ctaColor.withValues(alpha: 0.45)
-                                  : _ctaColor,
-                            ),
-                            label: Text(
-                              'Save a note',
-                              style: AppTheme.captionStyle.copyWith(
-                                color: _entrySaved
-                                    ? _ctaColor.withValues(alpha: 0.45)
-                                    : _ctaColor,
-                              ),
-                            ),
-                            style: TextButton.styleFrom(
-                              padding: EdgeInsets.zero,
-                              minimumSize: const Size(0, 0),
-                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      _buildStaged(
+                        animation: _subtextAnimation,
+                        offsetY: 4,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 16),
+                          child: Text(
+                            'You held onto ${widget.emotion.label} for ${widget.duration.toStringAsFixed(1)} seconds.',
+                            style: AppTheme.bodyStyle.copyWith(fontSize: 17),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                      _buildStaged(
+                        animation: _barsAnimation,
+                        offsetY: 4,
+                        child: Padding(
+                          padding: const EdgeInsets.only(top: 28),
+                          child: ReleaseVisualization(
+                            duration: widget.duration,
+                            startDelay: const Duration(
+                              milliseconds: _releaseVizStartDelayMs,
                             ),
                           ),
-                  ),
-                ),
-                AnimatedBuilder(
-                  animation: Listenable.merge([
-                    _doneAppearAnimation,
-                    _doneEnableAnimation,
-                  ]),
-                  builder: (context, _) {
-                    final appearValue = _doneAppearAnimation.value;
-                    final enableValue = _doneEnableAnimation.value;
-                    final opacity = (0.6 * appearValue + 0.4 * enableValue)
-                        .clamp(0.0, 1.0);
-                    final isEnabled = enableValue >= 1.0;
-                    return IgnorePointer(
-                      ignoring: !isEnabled,
-                      child: Opacity(
-                        opacity: opacity,
+                        ),
+                      ),
+                      SizedBox(height: sectionGap),
+                      AnimatedBuilder(
+                        animation: _rememberAnimation,
+                        builder: (context, child) {
+                          final value = _isExiting
+                              ? 0.0
+                              : _rememberAnimation.value;
+                          final opacity = value.clamp(0.0, 1.0);
+                          return IgnorePointer(
+                            ignoring: value == 0,
+                            child: Opacity(
+                              opacity: opacity,
+                              child: Transform.translate(
+                                offset: Offset(0, (1 - value) * 0),
+                                child: child,
+                              ),
+                            ),
+                          );
+                        },
                         child: Padding(
-                          padding: const EdgeInsets.only(bottom: 24),
-                          child: SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: isEnabled ? _onDone : null,
-                              style: ButtonStyle(
-                                backgroundColor:
-                                    WidgetStateProperty.resolveWith<Color>(
-                                  (states) {
-                                    if (states.contains(
-                                          WidgetState.hovered,
-                                        ) ||
-                                        states.contains(
-                                          WidgetState.pressed,
-                                        )) {
-                                      return _doneHoverColor;
-                                    }
-                                    return _doneBaseColor;
-                                  },
-                                ),
-                                foregroundColor:
-                                    WidgetStateProperty.all<Color>(
-                                  AppTheme.textPrimary,
-                                ),
-                                padding:
-                                    WidgetStateProperty.all<EdgeInsets>(
-                                  const EdgeInsets.symmetric(vertical: 18),
-                                ),
-                                shape: WidgetStateProperty.all(
-                                  RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(28),
+                          padding: const EdgeInsets.only(top: 4, bottom: 8),
+                          child: _showNoteSavedHint
+                              ? Text(
+                                  '✓ Note saved',
+                                  style: AppTheme.captionStyle.copyWith(
+                                    color: _ctaColor,
+                                  ),
+                                )
+                              : TextButton.icon(
+                                  onPressed: _entrySaved
+                                      ? null
+                                      : _openRememberModal,
+                                  icon: Icon(
+                                    Icons.edit_outlined,
+                                    size: 14,
+                                    color: _entrySaved
+                                        ? _ctaColor.withValues(alpha: 0.45)
+                                        : _ctaColor,
+                                  ),
+                                  label: Text(
+                                    'Save a note',
+                                    style: AppTheme.captionStyle.copyWith(
+                                      color: _entrySaved
+                                          ? _ctaColor.withValues(alpha: 0.45)
+                                          : _ctaColor,
+                                    ),
+                                  ),
+                                  style: TextButton.styleFrom(
+                                    padding: EdgeInsets.zero,
+                                    minimumSize: const Size(0, 0),
+                                    tapTargetSize:
+                                        MaterialTapTargetSize.shrinkWrap,
                                   ),
                                 ),
-                                elevation:
-                                    WidgetStateProperty.all<double>(0),
-                              ),
-                              child: const Text(
-                                'Done',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                  letterSpacing: 1.0,
+                        ),
+                      ),
+                      AnimatedBuilder(
+                        animation: Listenable.merge([
+                          _doneAppearAnimation,
+                          _doneEnableAnimation,
+                        ]),
+                        builder: (context, _) {
+                          final appearValue = _doneAppearAnimation.value;
+                          final enableValue = _doneEnableAnimation.value;
+                          final opacity =
+                              (0.6 * appearValue + 0.4 * enableValue).clamp(
+                                0.0,
+                                1.0,
+                              );
+                          final isEnabled = enableValue >= 1.0;
+                          return IgnorePointer(
+                            ignoring: !isEnabled,
+                            child: Opacity(
+                              opacity: opacity,
+                              child: Padding(
+                                padding: const EdgeInsets.only(bottom: 24),
+                                child: SizedBox(
+                                  width: double.infinity,
+                                  child: ElevatedButton(
+                                    onPressed: isEnabled ? _onDone : null,
+                                    style: ButtonStyle(
+                                      backgroundColor:
+                                          WidgetStateProperty.resolveWith<
+                                            Color
+                                          >((states) {
+                                            if (states.contains(
+                                                  WidgetState.hovered,
+                                                ) ||
+                                                states.contains(
+                                                  WidgetState.pressed,
+                                                )) {
+                                              return _doneHoverColor;
+                                            }
+                                            return _doneBaseColor;
+                                          }),
+                                      foregroundColor:
+                                          WidgetStateProperty.all<Color>(
+                                            AppTheme.textPrimary,
+                                          ),
+                                      padding:
+                                          WidgetStateProperty.all<EdgeInsets>(
+                                            const EdgeInsets.symmetric(
+                                              vertical: 18,
+                                            ),
+                                          ),
+                                      shape: WidgetStateProperty.all(
+                                        RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            28,
+                                          ),
+                                        ),
+                                      ),
+                                      elevation:
+                                          WidgetStateProperty.all<double>(0),
+                                    ),
+                                    child: const Text(
+                                      'Done',
+                                      style: TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w600,
+                                        letterSpacing: 1.0,
+                                      ),
+                                    ),
+                                  ),
                                 ),
                               ),
                             ),
-                          ),
-                        ),
+                          );
+                        },
                       ),
-                    );
-                  },
+                      SizedBox(height: bottomGap),
+                    ],
+                  ),
                 ),
-              ],
-            ),
+              );
+            },
           ),
         ),
       ),

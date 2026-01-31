@@ -61,6 +61,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).padding.bottom;
     return Scaffold(
       appBar: AppBar(
         title: const Text('Your moments'),
@@ -94,9 +95,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     ),
                   ),
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: AppTheme.pageHorizontalPadding,
-                      vertical: 24,
+                    padding: EdgeInsets.only(
+                      left: AppTheme.pageHorizontalPadding,
+                      right: AppTheme.pageHorizontalPadding,
+                      top: 24,
+                      bottom: 24 + bottomInset,
                     ),
                     child: SizedBox(
                       width: double.infinity,
@@ -154,9 +157,11 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ),
                 Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: AppTheme.pageHorizontalPadding,
-                    vertical: 24,
+                  padding: EdgeInsets.only(
+                    left: AppTheme.pageHorizontalPadding,
+                    right: AppTheme.pageHorizontalPadding,
+                    top: 24,
+                    bottom: 24 + bottomInset,
                   ),
                   child: SizedBox(
                     width: double.infinity,
@@ -215,9 +220,7 @@ class _HistorySection extends StatelessWidget {
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
               entry.note?.trim() ?? '',
-              style: AppTheme.bodyStyle.copyWith(
-                color: AppTheme.textPrimary,
-              ),
+              style: AppTheme.bodyStyle.copyWith(color: AppTheme.textPrimary),
             ),
           );
         }),
