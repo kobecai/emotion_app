@@ -24,6 +24,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
     with TickerProviderStateMixin {
   bool _isPressed = false;
   bool _isReleasing = false;
+  bool _isDisabledPulse = false;
   DateTime? _pressStartTime;
   late final Ticker _holdTicker;
   final Stopwatch _holdStopwatch = Stopwatch();
@@ -63,6 +64,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   static const double _rotationMidLowDegPerSec = 70.0;
   static const double _rotationMidHighDegPerSec = 140.0;
   static const double _rotationEndDegPerSec = 60.0;
+  static const Duration _disabledPulseDuration = Duration(milliseconds: 120);
 
 
   @override
@@ -184,6 +186,20 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
     if (!_holdTicker.isActive) {
       _holdTicker.start();
     }
+  }
+
+  void _onDisabledTap() {
+    HapticFeedback.selectionClick();
+    if (_isDisabledPulse) return;
+    setState(() {
+      _isDisabledPulse = true;
+    });
+    Future<void>.delayed(_disabledPulseDuration, () {
+      if (!mounted) return;
+      setState(() {
+        _isDisabledPulse = false;
+      });
+    });
   }
 
   void _onPressEnd() {
@@ -337,18 +353,14 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   Widget build(BuildContext context) {
     return Column(
       children: [
-        if (_isPressed)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12.0),
-            child: Text(
-              'Keep holding…',
-              style: AppTheme.subtleStyle.copyWith(
-                color: AppTheme.textSecondary,
-              ),
-            ),
-          ),
         Listener(
-          onPointerDown: (_) => _onPressStart(),
+          onPointerDown: (_) {
+            if (widget.isEnabled) {
+              _onPressStart();
+            } else {
+              _onDisabledTap();
+            }
+          },
           onPointerUp: (_) => _onPressEnd(),
           onPointerCancel: (_) => _onPressEnd(),
           child: AnimatedContainer(
@@ -361,7 +373,9 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
                   ? (_isPressed
                         ? AppTheme.primaryColor.withValues(alpha: 0.9)
                         : AppTheme.primaryColor)
-                  : AppTheme.primaryColor.withValues(alpha: 0.4),
+                  : AppTheme.primaryColor.withValues(
+                      alpha: _isDisabledPulse ? 0.34 : 0.4,
+                    ),
               boxShadow: _isPressed || !widget.isEnabled
                   ? []
                   : [
@@ -388,8 +402,13 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
                   ),
                 ),
                 const Text(
-                  'HOLD TO\nRELEASE',
-                  style: AppTheme.buttonTextStyle,
+                  'HOLD',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.w700,
+                    letterSpacing: 2.2,
+                    color: Colors.white,
+                  ),
                   textAlign: TextAlign.center,
                 ),
               ],

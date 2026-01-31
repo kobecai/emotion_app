@@ -6,6 +6,7 @@ import '../../../../data/local/release_storage.dart';
 import '../../../../domain/models/emotion.dart';
 import '../../../../domain/models/release_entry.dart';
 import '../../../core/themes/app_theme.dart';
+import '../../history/screens/history_screen.dart';
 import '../widgets/release_visualization.dart';
 
 class DoneScreen extends StatefulWidget {
@@ -25,7 +26,7 @@ class _DoneScreenState extends State<DoneScreen>
   static const int _releaseVizStartDelayMs = 300;
   static const int _baseTimelineMs = 3200;
   static const int _autoExitDelayMs = 5000;
-  static const Color _ctaColor = Color(0xFFB0B0B0);
+  static const Color _ctaColor = Color(0xFFD0D0D0);
   static const Color _doneBaseColor = Color(0xFFE0E0E0);
   static const Color _doneHoverColor = Color(0xFFCCCCCC);
   late int _timelineMs;
@@ -38,10 +39,13 @@ class _DoneScreenState extends State<DoneScreen>
   late Animation<double> _doneEnableAnimation;
   final TextEditingController _noteController = TextEditingController();
   final ReleaseStorage _storage = ReleaseStorage();
-  bool _noteSaved = false;
+  bool _entrySaved = false;
+  bool _showNoteSavedHint = false;
   bool _hasUserInteracted = false;
   bool _isExiting = false;
   Timer? _autoExitTimer;
+  Timer? _noteSavedTimer;
+  ReleaseEntry? _savedEntry;
 
   @override
   void initState() {
@@ -74,6 +78,7 @@ class _DoneScreenState extends State<DoneScreen>
   @override
   void dispose() {
     _autoExitTimer?.cancel();
+    _noteSavedTimer?.cancel();
     _timelineController.dispose();
     _noteController.dispose();
     super.dispose();
@@ -127,21 +132,25 @@ class _DoneScreenState extends State<DoneScreen>
     if (_isExiting) return;
     _isExiting = true;
     _autoExitTimer?.cancel();
-    final trimmedNote = _noteController.text.trim();
-    final entry = ReleaseEntry(
-      emotion: widget.emotion,
-      durationSeconds: widget.duration,
-      createdAt: DateTime.now(),
-      feedback: null,
-      note: trimmedNote.isEmpty ? null : trimmedNote,
-    );
-    await _storage.saveEntry(entry);
+    final entry = _entrySaved
+        ? _savedEntry
+        : ReleaseEntry(
+            emotion: widget.emotion,
+            durationSeconds: widget.duration,
+            createdAt: DateTime.now(),
+            feedback: null,
+            note: null,
+          );
+    if (!_entrySaved && entry != null) {
+      await _storage.saveEntry(entry);
+    }
     if (!mounted) return;
     Navigator.of(context).pop(entry);
   }
 
   Future<void> _openRememberModal() async {
-    if (_noteSaved) return;
+    if (_entrySaved) return;
+    final hasNotes = await _storage.hasNotes();
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -152,6 +161,7 @@ class _DoneScreenState extends State<DoneScreen>
       ),
       builder: (context) {
         final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+        final parentContext = this.context;
         return Padding(
           padding: EdgeInsets.only(
             left: AppTheme.pageHorizontalPadding,
@@ -164,19 +174,8 @@ class _DoneScreenState extends State<DoneScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'For next time',
-                style: AppTheme.captionStyle.copyWith(
-                  fontSize: 12,
-                  color: AppTheme.textSecondary.withValues(alpha: 0.8),
-                  letterSpacing: 0.6,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                'Shown only when you feel this again.',
-                style: AppTheme.captionStyle.copyWith(
-                  color: AppTheme.textSecondary.withValues(alpha: 0.75),
-                ),
+                'Write a note',
+                style: AppTheme.headingStyle.copyWith(fontSize: 18),
               ),
               const SizedBox(height: 16),
               TextField(
@@ -185,13 +184,8 @@ class _DoneScreenState extends State<DoneScreen>
                 maxLines: 5,
                 textInputAction: TextInputAction.newline,
                 decoration: InputDecoration(
-                  hintText: 'This will pass.',
-                  hintStyle: AppTheme.bodyStyle.copyWith(
-                    color: AppTheme.textSecondary.withValues(alpha: 0.5),
-                    fontStyle: FontStyle.italic,
-                  ),
                   filled: true,
-                  fillColor: AppTheme.background,
+                  fillColor: const Color(0xFFF5F5F5),
                   contentPadding: const EdgeInsets.symmetric(
                     horizontal: 16,
                     vertical: 14,
@@ -199,19 +193,22 @@ class _DoneScreenState extends State<DoneScreen>
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide(
-                      color: Colors.black.withValues(alpha: 0.05),
+                      color: Color(0xFFE0E0E0),
+                      width: 1,
                     ),
                   ),
                   enabledBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide(
-                      color: Colors.black.withValues(alpha: 0.05),
+                      color: Color(0xFFE0E0E0),
+                      width: 1,
                     ),
                   ),
                   focusedBorder: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide(
                       color: AppTheme.primaryColor.withValues(alpha: 0.4),
+                      width: 1,
                     ),
                   ),
                 ),
@@ -219,35 +216,82 @@ class _DoneScreenState extends State<DoneScreen>
                   color: AppTheme.textPrimary,
                 ),
               ),
-              const SizedBox(height: 20),
+              if (hasNotes) ...[
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Future<void>.delayed(Duration.zero, () {
+                      if (!parentContext.mounted) return;
+                      Navigator.of(parentContext).push(
+                        MaterialPageRoute(
+                          builder: (_) => const HistoryScreen(),
+                        ),
+                      );
+                    });
+                  },
+                  child: Text(
+                    'Your moments',
+                    style: AppTheme.captionStyle.copyWith(
+                      color: const Color(0xFF888888),
+                    ),
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
               SizedBox(
                 width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    if (mounted) {
-                      setState(() {
-                        _noteSaved = true;
-                      });
-                    }
-                    Navigator.of(context).pop();
+                child: ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _noteController,
+                  builder: (context, value, _) {
+                    final canSave = value.text.trim().isNotEmpty;
+                    return TextButton(
+                      onPressed: canSave
+                          ? () async {
+                              final trimmedNote =
+                                  _noteController.text.trim();
+                              final entry = ReleaseEntry(
+                                emotion: widget.emotion,
+                                durationSeconds: widget.duration,
+                                createdAt: DateTime.now(),
+                                feedback: null,
+                                note: trimmedNote,
+                              );
+                              await _storage.saveEntry(entry);
+                              if (mounted) {
+                                setState(() {
+                                  _entrySaved = true;
+                                  _savedEntry = entry;
+                                  _showNoteSavedHint = true;
+                                });
+                                _noteSavedTimer?.cancel();
+                                _noteSavedTimer = Timer(
+                                  const Duration(seconds: 1),
+                                  () {
+                                    if (!mounted) return;
+                                    setState(() {
+                                      _showNoteSavedHint = false;
+                                    });
+                                  },
+                                );
+                              }
+                              if (context.mounted) {
+                                Navigator.of(context).pop();
+                              }
+                            }
+                          : null,
+                      style: TextButton.styleFrom(
+                        foregroundColor: const Color(0xFF888888),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        textStyle: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w500,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      child: const Text('Save'),
+                    );
                   },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppTheme.primaryColor,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                    elevation: 0,
-                  ),
-                  child: const Text(
-                    'Save',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      letterSpacing: 1.0,
-                    ),
-                  ),
                 ),
               ),
             ],
@@ -329,28 +373,36 @@ class _DoneScreenState extends State<DoneScreen>
                   },
                   child: Padding(
                     padding: const EdgeInsets.only(top: 4, bottom: 8),
-                    child: TextButton(
-                      onPressed: _noteSaved ? null : _openRememberModal,
-                      style: TextButton.styleFrom(
-                        foregroundColor: _noteSaved
-                            ? _ctaColor.withValues(alpha: 0.45)
-                            : _ctaColor,
-                        padding: EdgeInsets.zero,
-                        minimumSize: const Size(0, 0),
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                      ),
-                      child: Text(
-                        _noteSaved
-                            ? 'Saved for next time'
-                            : 'A note for your future self',
-                        style: AppTheme.captionStyle.copyWith(
-                          fontSize: 14,
-                          color: _noteSaved
-                              ? _ctaColor.withValues(alpha: 0.45)
-                              : _ctaColor,
-                        ),
-                      ),
-                    ),
+                    child: _showNoteSavedHint
+                        ? Text(
+                            '✓ Note saved',
+                            style: AppTheme.captionStyle.copyWith(
+                              color: _ctaColor,
+                            ),
+                          )
+                        : TextButton.icon(
+                            onPressed: _entrySaved ? null : _openRememberModal,
+                            icon: Icon(
+                              Icons.edit_outlined,
+                              size: 14,
+                              color: _entrySaved
+                                  ? _ctaColor.withValues(alpha: 0.45)
+                                  : _ctaColor,
+                            ),
+                            label: Text(
+                              'Save a note',
+                              style: AppTheme.captionStyle.copyWith(
+                                color: _entrySaved
+                                    ? _ctaColor.withValues(alpha: 0.45)
+                                    : _ctaColor,
+                              ),
+                            ),
+                            style: TextButton.styleFrom(
+                              padding: EdgeInsets.zero,
+                              minimumSize: const Size(0, 0),
+                              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                            ),
+                          ),
                   ),
                 ),
                 AnimatedBuilder(

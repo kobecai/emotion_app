@@ -15,6 +15,8 @@ class EmotionChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final selectedColor = AppTheme.primaryColor.withValues(alpha: 0.85);
+
     return Material(
       color: Colors.transparent,
       child: InkWell(
@@ -27,11 +29,9 @@ class EmotionChip extends StatelessWidget {
             duration: const Duration(milliseconds: 200),
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
             decoration: BoxDecoration(
-              color: isSelected ? AppTheme.primaryColor : Colors.transparent,
+              color: isSelected ? selectedColor : Colors.transparent,
               border: Border.all(
-                color: isSelected
-                    ? AppTheme.primaryColor
-                    : AppTheme.pillUnselected,
+                color: isSelected ? selectedColor : AppTheme.pillUnselected,
                 width: 1.8,
               ),
               borderRadius: BorderRadius.circular(28),

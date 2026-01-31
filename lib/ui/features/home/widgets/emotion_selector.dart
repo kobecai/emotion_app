@@ -20,7 +20,7 @@ class EmotionSelector extends StatelessWidget {
       crossAxisCount: 2,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
+      mainAxisSpacing: 28,
       crossAxisSpacing: 12,
       childAspectRatio: 3.2,
       children: emotions.map((emotion) {

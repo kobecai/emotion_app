@@ -26,6 +26,11 @@ class ReleaseStorage {
     return entries.first;
   }
 
+  Future<bool> hasNotes() async {
+    final entries = await loadEntries();
+    return entries.any((entry) => (entry.note?.trim() ?? '').isNotEmpty);
+  }
+
   Future<ReleaseEntry?> findLatestMatchingNote({
     required Emotion emotion,
   }) async {
