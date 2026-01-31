@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import '../../../../data/local/release_storage.dart';
+import '../../../../data/analytics/posthog_analytics.dart';
 import '../../../../domain/models/emotion.dart';
 import '../../../../domain/models/release_entry.dart';
 import '../../../core/themes/app_theme.dart';
@@ -50,6 +51,10 @@ class _DoneScreenState extends State<DoneScreen>
   @override
   void initState() {
     super.initState();
+    PosthogAnalytics.instance.trackDoneScreenShown(
+      emotionLabel: widget.emotion.label,
+      durationSeconds: widget.duration,
+    );
     final doneEnableStartMs = _computeDoneEnableStartMs();
     _timelineMs = _computeTimelineMs(doneEnableStartMs);
     _timelineController = AnimationController(
@@ -150,6 +155,9 @@ class _DoneScreenState extends State<DoneScreen>
 
   Future<void> _openRememberModal() async {
     if (_entrySaved) return;
+    PosthogAnalytics.instance.trackRememberCtaTapped(
+      emotionLabel: widget.emotion.label,
+    );
     final hasNotes = await _storage.hasNotes();
     if (!mounted) return;
     await showModalBottomSheet<void>(

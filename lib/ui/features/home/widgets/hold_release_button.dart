@@ -9,11 +9,15 @@ import '../../../core/themes/app_theme.dart';
 class HoldReleaseButton extends StatefulWidget {
   final ValueChanged<double> onRelease;
   final bool isEnabled;
+  final VoidCallback? onHoldStart;
+  final ValueChanged<double>? onHoldEnd;
 
   const HoldReleaseButton({
     super.key,
     required this.onRelease,
     required this.isEnabled,
+    this.onHoldStart,
+    this.onHoldEnd,
   });
 
   @override
@@ -196,6 +200,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
       _isReleasing = false;
       _pressStartTime = DateTime.now();
     });
+    widget.onHoldStart?.call();
     _holdStopwatch
       ..reset()
       ..start();
@@ -250,6 +255,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
     });
 
     _pendingReleaseSeconds = seconds;
+    widget.onHoldEnd?.call(seconds);
     _releaseController.forward(from: 0.0);
 
     _pressStartTime = null;

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../../domain/models/emotion.dart';
 import '../../../../domain/models/release_entry.dart';
+import '../../../../data/analytics/posthog_analytics.dart';
 import '../../../core/themes/app_theme.dart';
 import '../widgets/emotion_selector.dart';
 import '../widgets/hold_release_button.dart';
@@ -25,6 +26,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       selectedEmotion = emotion;
     });
+    PosthogAnalytics.instance.trackEmotionSelected(emotion.label);
   }
 
   Future<void> _navigateToAfterScreen(double duration) async {
@@ -105,6 +107,21 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: HoldReleaseButton(
                         onRelease: _navigateToAfterScreen,
                         isEnabled: selectedEmotion != null,
+                        onHoldStart: selectedEmotion == null
+                            ? null
+                            : () {
+                                PosthogAnalytics.instance.trackHoldStart(
+                                  emotionLabel: selectedEmotion!.label,
+                                );
+                              },
+                        onHoldEnd: selectedEmotion == null
+                            ? null
+                            : (seconds) {
+                                PosthogAnalytics.instance.trackHoldReleased(
+                                  emotionLabel: selectedEmotion!.label,
+                                  durationSeconds: seconds,
+                                );
+                              },
                       ),
                     ),
                     SizedBox(height: bottomGap),
