@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import '../../../../data/local/release_storage.dart';
 import '../../../../domain/models/emotion.dart';
@@ -18,7 +20,15 @@ class DoneScreen extends StatefulWidget {
 
 class _DoneScreenState extends State<DoneScreen>
     with SingleTickerProviderStateMixin {
-  static const int _timelineMs = 6300;
+  static const int _minDoneEnableMs = 2500;
+  static const int _maxDoneEnableMs = 6000;
+  static const int _doneEnableFadeMs = 300;
+  static const int _releaseVizStartDelayMs = 300;
+  static const int _releaseVizDurationMs = 1200;
+  static const int _exhaleMinMs = 1200;
+  static const int _exhaleMaxMs = 3000;
+  static const int _baseTimelineMs = 5400;
+  late int _timelineMs;
   late AnimationController _timelineController;
   late Animation<double> _titleAnimation;
   late Animation<double> _barsAnimation;
@@ -37,8 +47,10 @@ class _DoneScreenState extends State<DoneScreen>
   @override
   void initState() {
     super.initState();
+    final doneEnableStartMs = _computeDoneEnableStartMs();
+    _timelineMs = _computeTimelineMs(doneEnableStartMs);
     _timelineController = AnimationController(
-      duration: const Duration(milliseconds: _timelineMs),
+      duration: Duration(milliseconds: _timelineMs),
       vsync: this,
     );
 
@@ -50,7 +62,11 @@ class _DoneScreenState extends State<DoneScreen>
     _inputAnimation = _interval(4700, 5000, Curves.easeOut);
     _helperAnimation = _interval(5200, 5400, Curves.easeOut);
     _doneAppearAnimation = _interval(3400, 3700, Curves.easeOut);
-    _doneEnableAnimation = _interval(6000, 6300, Curves.easeOut);
+    _doneEnableAnimation = _interval(
+      doneEnableStartMs,
+      doneEnableStartMs + _doneEnableFadeMs,
+      Curves.easeOut,
+    );
 
     _timelineController.forward();
     _loadHelperVisibility();
@@ -70,6 +86,20 @@ class _DoneScreenState extends State<DoneScreen>
       parent: _timelineController,
       curve: Interval(start, end, curve: curve),
     );
+  }
+
+  int _computeDoneEnableStartMs() {
+    final rawExhaleMs = (widget.duration * 120).round();
+    final exhaleMs = rawExhaleMs.clamp(_exhaleMinMs, _exhaleMaxMs) as int;
+    final breathEndMs =
+        _releaseVizStartDelayMs + _releaseVizDurationMs + exhaleMs;
+    final readyMs = math.max(_minDoneEnableMs, breathEndMs).toInt();
+    return math.min(readyMs, _maxDoneEnableMs).toInt();
+  }
+
+  int _computeTimelineMs(int doneEnableStartMs) {
+    final endMs = doneEnableStartMs + _doneEnableFadeMs;
+    return math.max(_baseTimelineMs, endMs).toInt();
   }
 
   Future<void> _loadHelperVisibility() async {
