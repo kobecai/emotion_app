@@ -66,7 +66,6 @@ class AppTheme {
       seedColor: primaryColor,
       primary: primaryColor,
       secondary: accentColor,
-      background: background,
-    ),
+    ).copyWith(surface: background),
   );
 }

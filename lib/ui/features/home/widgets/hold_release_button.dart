@@ -42,9 +42,11 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   double _releaseStartStroke = 0.0;
   double _releaseStartSweep = 0.0;
 
-  static const double _ringSize = 200.0;
+  static const double _defaultRingSize = 200.0;
+  static const double _minRingSize = 160.0;
+  static const double _maxRingSize = 240.0;
+  static const double _ringScaleFactor = 0.62;
   static const double _ringInset = 10.0;
-  static const double _baseRadius = _ringSize / 2 - _ringInset;
   static const double _baseStroke = 5.0;
   static const double _holdSweep = 2 * math.pi * 0.78;
   static const Duration _breathDuration = Duration(seconds: 12);
@@ -66,18 +68,22 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   static const double _rotationEndDegPerSec = 60.0;
   static const Duration _disabledPulseDuration = Duration(milliseconds: 120);
 
+  late double _ringSize;
+
+  double get _baseRadius => _ringSize / 2 - _ringInset;
 
   @override
   void initState() {
     super.initState();
+    _ringSize = _defaultRingSize;
     _holdTicker = createTicker((elapsed) {
       if (!mounted) return;
       if (_isPressed) {
-        final double dtSeconds = (elapsed - _lastTickElapsed).inMicroseconds /
+        final double dtSeconds =
+            (elapsed - _lastTickElapsed).inMicroseconds /
             Duration.microsecondsPerSecond;
         if (dtSeconds > 0) {
-          final double tSeconds =
-              _holdStopwatch.elapsedMilliseconds / 1000.0;
+          final double tSeconds = _holdStopwatch.elapsedMilliseconds / 1000.0;
           _rotationAngle += _rotationSpeedForSeconds(tSeconds) * dtSeconds;
           _lastTickElapsed = elapsed;
         }
@@ -92,8 +98,10 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
     );
     _breathScale = TweenSequence<double>([
       TweenSequenceItem(
-        tween: Tween<double>(begin: 1.0, end: _breathScaleMax)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween<double>(
+          begin: 1.0,
+          end: _breathScaleMax,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 4,
       ),
       TweenSequenceItem(
@@ -101,63 +109,64 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
         weight: 1,
       ),
       TweenSequenceItem(
-        tween: Tween<double>(begin: _breathScaleMax, end: 1.0)
-            .chain(CurveTween(curve: Curves.easeInOut)),
+        tween: Tween<double>(
+          begin: _breathScaleMax,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeInOut)),
         weight: 6,
       ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(1.0),
-        weight: 1,
-      ),
+      TweenSequenceItem(tween: ConstantTween<double>(1.0), weight: 1),
     ]).animate(_breathController);
-    _breathOpacity = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween<double>(begin: _breathOpacityMin, end: _breathOpacityMax)
-            .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 4,
-      ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(_breathOpacityMax),
-        weight: 1,
-      ),
-      TweenSequenceItem(
-        tween: Tween<double>(begin: _breathOpacityMax, end: _breathOpacityMin)
-            .chain(CurveTween(curve: Curves.easeInOut)),
-        weight: 6,
-      ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(_breathOpacityMin),
-        weight: 1,
-      ),
-    ]).animate(_breathController)
-      ..addListener(() {
-        if (mounted && _isPressed) {
-          setState(() {});
-        }
-      });
-    _releaseController = AnimationController(
-      vsync: this,
-      duration: _releaseDuration,
-    )
-      ..addListener(() {
-        if (mounted) {
-          setState(() {});
-        }
-      })
-      ..addStatusListener((status) {
-        if (status == AnimationStatus.completed) {
-          if (mounted) {
-            setState(() {
-              _isReleasing = false;
-            });
+    _breathOpacity =
+        TweenSequence<double>([
+          TweenSequenceItem(
+            tween: Tween<double>(
+              begin: _breathOpacityMin,
+              end: _breathOpacityMax,
+            ).chain(CurveTween(curve: Curves.easeInOut)),
+            weight: 4,
+          ),
+          TweenSequenceItem(
+            tween: ConstantTween<double>(_breathOpacityMax),
+            weight: 1,
+          ),
+          TweenSequenceItem(
+            tween: Tween<double>(
+              begin: _breathOpacityMax,
+              end: _breathOpacityMin,
+            ).chain(CurveTween(curve: Curves.easeInOut)),
+            weight: 6,
+          ),
+          TweenSequenceItem(
+            tween: ConstantTween<double>(_breathOpacityMin),
+            weight: 1,
+          ),
+        ]).animate(_breathController)..addListener(() {
+          if (mounted && _isPressed) {
+            setState(() {});
           }
-          final seconds = _pendingReleaseSeconds;
-          _pendingReleaseSeconds = null;
-          if (seconds != null) {
-            widget.onRelease(seconds);
-          }
-        }
-      });
+        });
+    _releaseController =
+        AnimationController(vsync: this, duration: _releaseDuration)
+          ..addListener(() {
+            if (mounted) {
+              setState(() {});
+            }
+          })
+          ..addStatusListener((status) {
+            if (status == AnimationStatus.completed) {
+              if (mounted) {
+                setState(() {
+                  _isReleasing = false;
+                });
+              }
+              final seconds = _pendingReleaseSeconds;
+              _pendingReleaseSeconds = null;
+              if (seconds != null) {
+                widget.onRelease(seconds);
+              }
+            }
+          });
   }
 
   @override
@@ -166,6 +175,18 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
     _breathController.dispose();
     _releaseController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _ringSize = _resolveRingSize(context);
+  }
+
+  double _resolveRingSize(BuildContext context) {
+    final shortestSide = MediaQuery.of(context).size.shortestSide;
+    final target = shortestSide * _ringScaleFactor;
+    return target.clamp(_minRingSize, _maxRingSize);
   }
 
   void _onPressStart() {
@@ -239,7 +260,8 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
     double speedDeg;
     if (phase <= _rotationStage1Seconds) {
       final double p = (phase / _rotationStage1Seconds).clamp(0.0, 1.0);
-      speedDeg = lerpDouble(
+      speedDeg =
+          lerpDouble(
             _rotationStartDegPerSec,
             _rotationPeakDegPerSec,
             Curves.easeOut.transform(p),
@@ -247,21 +269,27 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
           _rotationPeakDegPerSec;
     } else if (phase <= _rotationStage1Seconds + _rotationStage2Seconds) {
       final double p =
-          ((phase - _rotationStage1Seconds) / _rotationStage2Seconds)
-              .clamp(0.0, 1.0);
-      speedDeg = lerpDouble(
+          ((phase - _rotationStage1Seconds) / _rotationStage2Seconds).clamp(
+            0.0,
+            1.0,
+          );
+      speedDeg =
+          lerpDouble(
             _rotationPeakDegPerSec,
             _rotationMidLowDegPerSec,
             Curves.easeInOut.transform(p),
           ) ??
           _rotationMidLowDegPerSec;
     } else if (phase <=
-        _rotationStage1Seconds + _rotationStage2Seconds + _rotationStage3Seconds) {
+        _rotationStage1Seconds +
+            _rotationStage2Seconds +
+            _rotationStage3Seconds) {
       final double p =
           ((phase - _rotationStage1Seconds - _rotationStage2Seconds) /
                   _rotationStage3Seconds)
               .clamp(0.0, 1.0);
-      speedDeg = lerpDouble(
+      speedDeg =
+          lerpDouble(
             _rotationMidLowDegPerSec,
             _rotationMidHighDegPerSec,
             Curves.easeInOut.transform(p),
@@ -269,11 +297,14 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
           _rotationMidHighDegPerSec;
     } else {
       final double p =
-          ((phase - _rotationStage1Seconds - _rotationStage2Seconds -
+          ((phase -
+                      _rotationStage1Seconds -
+                      _rotationStage2Seconds -
                       _rotationStage3Seconds) /
                   _rotationStage4Seconds)
               .clamp(0.0, 1.0);
-      speedDeg = lerpDouble(
+      speedDeg =
+          lerpDouble(
             _rotationMidHighDegPerSec,
             _rotationEndDegPerSec,
             Curves.easeInOut.transform(p),
@@ -311,36 +342,47 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
     if (_isReleasing) {
       final double t = _releaseController.value;
       final double closePhaseT =
-          (_releaseCloseDuration.inMilliseconds / _releaseDuration.inMilliseconds)
+          (_releaseCloseDuration.inMilliseconds /
+                  _releaseDuration.inMilliseconds)
               .clamp(0.0, 1.0);
       if (t <= closePhaseT && closePhaseT > 0) {
-        final double easedT =
-            Curves.easeOutCubic.transform((t / closePhaseT).clamp(0.0, 1.0));
+        final double easedT = Curves.easeOutCubic.transform(
+          (t / closePhaseT).clamp(0.0, 1.0),
+        );
         return _RingVisual(
           rotation: _releaseStartRotation,
           radius: _releaseStartRadius,
           strokeWidth: _releaseStartStroke,
           opacity: _releaseStartOpacity,
-          sweep: lerpDouble(_releaseStartSweep, 2 * math.pi, easedT) ??
+          sweep:
+              lerpDouble(_releaseStartSweep, 2 * math.pi, easedT) ??
               _releaseStartSweep,
         );
       }
-      final double collapseT =
-          ((t - closePhaseT) / (1 - closePhaseT)).clamp(0.0, 1.0);
+      final double collapseT = ((t - closePhaseT) / (1 - closePhaseT)).clamp(
+        0.0,
+        1.0,
+      );
       return _RingVisual(
         rotation: _releaseStartRotation,
-        radius: lerpDouble(
-                _releaseStartRadius, _baseRadius * _releaseScaleMin, collapseT) ??
+        radius:
+            lerpDouble(
+              _releaseStartRadius,
+              _baseRadius * _releaseScaleMin,
+              collapseT,
+            ) ??
             _releaseStartRadius,
-        strokeWidth: lerpDouble(_releaseStartStroke, 0.0, collapseT) ??
+        strokeWidth:
+            lerpDouble(_releaseStartStroke, 0.0, collapseT) ??
             _releaseStartStroke,
-        opacity: lerpDouble(_releaseStartOpacity, 0.0, collapseT) ??
+        opacity:
+            lerpDouble(_releaseStartOpacity, 0.0, collapseT) ??
             _releaseStartOpacity,
         sweep: 2 * math.pi,
       );
     }
 
-    return const _RingVisual(
+    return _RingVisual(
       rotation: 0.0,
       radius: _baseRadius,
       strokeWidth: _baseStroke,
@@ -351,6 +393,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
 
   @override
   Widget build(BuildContext context) {
+    final ringSize = _ringSize;
     return Column(
       children: [
         Listener(
@@ -365,8 +408,8 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
           onPointerCancel: (_) => _onPressEnd(),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
-            width: _ringSize,
-            height: _ringSize,
+            width: ringSize,
+            height: ringSize,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: widget.isEnabled
@@ -395,7 +438,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
               alignment: Alignment.center,
               children: [
                 CustomPaint(
-                  size: const Size(_ringSize, _ringSize),
+                  size: Size(ringSize, ringSize),
                   painter: _ProgressRingPainter(
                     ring: _currentRing(),
                     isActive: _isPressed || _isReleasing,

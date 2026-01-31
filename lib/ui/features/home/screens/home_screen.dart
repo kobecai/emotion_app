@@ -48,53 +48,69 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final availableHeight =
+        MediaQuery.of(context).size.height -
+        MediaQuery.of(context).padding.vertical;
+    final isCompactHeight = availableHeight < 680;
+    final isLandscape =
+        MediaQuery.of(context).orientation == Orientation.landscape;
+    final gapScale = isCompactHeight || isLandscape ? 0.08 : 0.12;
+    final topGap = (availableHeight * gapScale).clamp(40.0, 140.0);
+    final middleGap = (availableHeight * gapScale).clamp(48.0, 160.0);
+    final bottomGap = (availableHeight * (gapScale - 0.02)).clamp(40.0, 140.0);
+
     return Scaffold(
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(
             horizontal: AppTheme.pageHorizontalPadding,
           ),
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              minHeight:
-                  MediaQuery.of(context).size.height -
-                  MediaQuery.of(context).padding.vertical,
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 120),
-                EmotionSelector(
-                  selectedEmotion: selectedEmotion,
-                  onEmotionSelected: _onEmotionSelected,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight:
+                      MediaQuery.of(context).size.height -
+                      MediaQuery.of(context).padding.vertical,
                 ),
-                const SizedBox(height: 120),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: AnimatedOpacity(
-                    duration: const Duration(milliseconds: 200),
-                    opacity: selectedEmotion != null ? 1.0 : 0.0,
-                    child: const Text(
-                      'Press and hold',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w400,
-                        color: Color(0xFFC0C0C0),
-                        height: 1.4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: topGap),
+                    EmotionSelector(
+                      selectedEmotion: selectedEmotion,
+                      onEmotionSelected: _onEmotionSelected,
+                    ),
+                    SizedBox(height: middleGap),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: AnimatedOpacity(
+                        duration: const Duration(milliseconds: 200),
+                        opacity: selectedEmotion != null ? 1.0 : 0.0,
+                        child: const Text(
+                          'Press and hold',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w400,
+                            color: Color(0xFFC0C0C0),
+                            height: 1.4,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.center,
+                      child: HoldReleaseButton(
+                        onRelease: _navigateToAfterScreen,
+                        isEnabled: selectedEmotion != null,
+                      ),
+                    ),
+                    SizedBox(height: bottomGap),
+                  ],
                 ),
-                const SizedBox(height: 16),
-                Align(
-                  alignment: Alignment.center,
-                  child: HoldReleaseButton(
-                    onRelease: _navigateToAfterScreen,
-                    isEnabled: selectedEmotion != null,
-                  ),
-                ),
-                const SizedBox(height: 120),
-              ],
+              ),
             ),
           ),
         ),

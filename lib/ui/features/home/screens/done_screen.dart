@@ -151,6 +151,7 @@ class _DoneScreenState extends State<DoneScreen>
   Future<void> _openRememberModal() async {
     if (_entrySaved) return;
     final hasNotes = await _storage.hasNotes();
+    if (!mounted) return;
     await showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,

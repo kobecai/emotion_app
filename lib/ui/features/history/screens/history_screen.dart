@@ -146,7 +146,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       vertical: 16,
                     ),
                     itemCount: sections.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 16),
+                    separatorBuilder: (context, index) =>
+                        const SizedBox(height: 16),
                     itemBuilder: (context, index) {
                       final section = sections[index];
                       return _HistorySection(
