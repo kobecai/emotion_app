@@ -23,9 +23,15 @@ class PosthogAnalytics {
   DateTime? _appStartTime;
   DateTime? _emotionSelectedTime;
   bool _initialized = false;
+  bool _enabled = false;
 
-  Future<void> init() async {
+  Future<void> init({required bool enabled}) async {
     if (_initialized) return;
+    _enabled = enabled;
+    if (!_enabled) {
+      _initialized = true;
+      return;
+    }
     final prefs = await SharedPreferences.getInstance();
     final storedId = prefs.getString(_deviceIdKey);
     if (storedId != null && storedId.isNotEmpty) {
@@ -35,6 +41,20 @@ class PosthogAnalytics {
       await prefs.setString(_deviceIdKey, _deviceId!);
     }
     _initialized = true;
+  }
+
+  Future<void> setEnabled(bool enabled) async {
+    _enabled = enabled;
+    if (!_enabled) return;
+    if (_deviceId != null) return;
+    final prefs = await SharedPreferences.getInstance();
+    final storedId = prefs.getString(_deviceIdKey);
+    if (storedId != null && storedId.isNotEmpty) {
+      _deviceId = storedId;
+    } else {
+      _deviceId = _uuid.v4();
+      await prefs.setString(_deviceIdKey, _deviceId!);
+    }
   }
 
   void trackAppOpen() {
@@ -117,7 +137,7 @@ class PosthogAnalytics {
   }
 
   Future<void> _track(String event, {Map<String, dynamic>? properties}) async {
-    if (!_initialized || _deviceId == null) return;
+    if (!_initialized || !_enabled || _deviceId == null) return;
 
     final payload = <String, dynamic>{
       'api_key': _apiKey,

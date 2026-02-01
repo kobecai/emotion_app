@@ -2,9 +2,11 @@ import 'package:flutter/material.dart';
 import '../../../../domain/models/emotion.dart';
 import '../../../../domain/models/release_entry.dart';
 import '../../../../data/analytics/posthog_analytics.dart';
+import '../../../../data/local/app_settings.dart';
 import '../../../core/themes/app_theme.dart';
 import '../widgets/emotion_selector.dart';
 import '../widgets/hold_release_button.dart';
+import '../widgets/info_sheet.dart';
 import 'done_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -20,6 +22,49 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _maybeShowSafetyDialog();
+  }
+
+  Future<void> _maybeShowSafetyDialog() async {
+    final accepted = await AppSettings.getTermsAccepted();
+    if (!mounted || accepted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (context) {
+          return AlertDialog(
+            title: const Text('Before you begin'),
+            content: const Text(
+              'This app is not medical advice and not for emergencies. '
+              'If you are in the U.S. and need immediate help, call or text 988.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Not now'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  await showInfoSheet(context);
+                },
+                child: const Text('Details'),
+              ),
+              FilledButton(
+                onPressed: () async {
+                  await AppSettings.setTermsAccepted(true);
+                  if (!context.mounted) return;
+                  Navigator.of(context).pop();
+                },
+                child: const Text('I understand'),
+              ),
+            ],
+          );
+        },
+      );
+    });
   }
 
   void _onEmotionSelected(Emotion emotion) {
@@ -80,6 +125,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     SizedBox(height: topGap),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('LET GO', style: AppTheme.logoStyle),
+                        IconButton(
+                          onPressed: () => showInfoSheet(context),
+                          icon: const Icon(Icons.info_outline),
+                          color: AppTheme.textSecondary,
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
                     EmotionSelector(
                       selectedEmotion: selectedEmotion,
                       onEmotionSelected: _onEmotionSelected,
