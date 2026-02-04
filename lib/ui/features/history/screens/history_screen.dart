@@ -13,31 +13,11 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  static const int _autoExitDelayMs = 3000;
-  Timer? _autoExitTimer;
-
-  @override
-  void initState() {
-    super.initState();
-    _scheduleAutoExit();
-  }
+  static const double _sheetMaxHeightFactor = 0.6;
 
   @override
   void dispose() {
-    _autoExitTimer?.cancel();
     super.dispose();
-  }
-
-  void _scheduleAutoExit() {
-    _autoExitTimer?.cancel();
-    _autoExitTimer = Timer(const Duration(milliseconds: _autoExitDelayMs), () {
-      if (!mounted) return;
-      Navigator.of(context).pop();
-    });
-  }
-
-  void _onUserInteraction() {
-    _scheduleAutoExit();
   }
 
   String _formatDate(DateTime date) {
@@ -59,6 +39,65 @@ class _HistoryScreenState extends State<HistoryScreen> {
     return '$month ${date.day}';
   }
 
+  String _formatTime(DateTime date) {
+    final hour = date.hour.toString().padLeft(2, '0');
+    final minute = date.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
+  }
+
+  String _formatDateTime(DateTime date) {
+    return '${_formatDate(date)} · ${_formatTime(date)}';
+  }
+
+  Future<void> _showEntrySheet(ReleaseEntry entry) async {
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      barrierColor: Colors.black.withValues(alpha: 0.12),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) {
+        final maxHeight =
+            MediaQuery.of(context).size.height * _sheetMaxHeightFactor;
+        return ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: maxHeight),
+          child: Padding(
+            padding: const EdgeInsets.only(
+              left: AppTheme.pageHorizontalPadding,
+              right: AppTheme.pageHorizontalPadding,
+              top: 20,
+              bottom: 24,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _formatDateTime(entry.createdAt),
+                    style: AppTheme.captionStyle.copyWith(
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    entry.note?.trim() ?? '',
+                    style: AppTheme.bodyStyle.copyWith(
+                      color: AppTheme.textPrimary,
+                      height: 1.6,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -70,8 +109,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
         foregroundColor: AppTheme.textPrimary,
       ),
       body: Listener(
-        onPointerDown: (_) => _onUserInteraction(),
-        onPointerMove: (_) => _onUserInteraction(),
         child: FutureBuilder<List<ReleaseEntry>>(
           future: ReleaseStorage().loadEntries(),
           builder: (context, snapshot) {
@@ -130,12 +167,6 @@ class _HistoryScreenState extends State<HistoryScreen> {
             }
 
             entries.sort((a, b) => b.createdAt.compareTo(a.createdAt));
-            final grouped = <String, List<ReleaseEntry>>{};
-            for (final entry in entries) {
-              final key = _formatDate(entry.createdAt);
-              grouped.putIfAbsent(key, () => []).add(entry);
-            }
-            final sections = grouped.entries.toList();
 
             return Column(
               children: [
@@ -145,14 +176,15 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       horizontal: AppTheme.pageHorizontalPadding,
                       vertical: 16,
                     ),
-                    itemCount: sections.length,
+                    itemCount: entries.length,
                     separatorBuilder: (context, index) =>
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                     itemBuilder: (context, index) {
-                      final section = sections[index];
-                      return _HistorySection(
-                        dateLabel: section.key,
-                        entries: section.value,
+                      final entry = entries[index];
+                      return _HistoryItem(
+                        dateLabel: _formatDateTime(entry.createdAt),
+                        note: entry.note?.trim() ?? '',
+                        onTap: () => _showEntrySheet(entry),
                       );
                     },
                   ),
@@ -197,35 +229,46 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 }
 
-class _HistorySection extends StatelessWidget {
+class _HistoryItem extends StatelessWidget {
   final String dateLabel;
-  final List<ReleaseEntry> entries;
+  final String note;
+  final VoidCallback onTap;
 
-  const _HistorySection({required this.dateLabel, required this.entries});
+  const _HistoryItem({
+    required this.dateLabel,
+    required this.note,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          dateLabel,
-          style: AppTheme.bodyStyle.copyWith(
-            fontWeight: FontWeight.w600,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        const SizedBox(height: 8),
-        ...entries.map((entry) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              entry.note?.trim() ?? '',
-              style: AppTheme.bodyStyle.copyWith(color: AppTheme.textPrimary),
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 6),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              dateLabel,
+              style: AppTheme.captionStyle.copyWith(
+                color: AppTheme.textSecondary,
+              ),
             ),
-          );
-        }),
-      ],
+            const SizedBox(height: 6),
+            Text(
+              note,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTheme.subtleStyle.copyWith(
+                color: AppTheme.textSecondary,
+                height: 1.6,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

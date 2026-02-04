@@ -49,7 +49,7 @@ class ReleaseStorage {
     final entries = await loadEntries();
     final updated = [entry, ...entries];
     final encoded = updated
-        .take(100)
+        .take(30)
         .map((item) => jsonEncode(item.toJson()))
         .toList();
     await prefs.setStringList(_entriesKey, encoded);

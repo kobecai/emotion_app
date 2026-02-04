@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../../../data/local/release_storage.dart';
 import '../../../../data/analytics/posthog_analytics.dart';
 import '../../../../domain/models/emotion.dart';
@@ -22,6 +23,7 @@ class DoneScreen extends StatefulWidget {
 
 class _DoneScreenState extends State<DoneScreen>
     with SingleTickerProviderStateMixin {
+  static const int _noteMaxLength = 150;
   static const int _minDoneEnableMs = 600;
   static const int _doneEnableFadeMs = 200;
   static const int _releaseVizStartDelayMs = 300;
@@ -197,6 +199,10 @@ class _DoneScreenState extends State<DoneScreen>
                 controller: _noteController,
                 minLines: 3,
                 maxLines: 5,
+                maxLength: _noteMaxLength,
+                inputFormatters: [
+                  LengthLimitingTextInputFormatter(_noteMaxLength),
+                ],
                 textInputAction: TextInputAction.newline,
                 decoration: InputDecoration(
                   filled: true,
@@ -205,6 +211,7 @@ class _DoneScreenState extends State<DoneScreen>
                     horizontal: 16,
                     vertical: 14,
                   ),
+                  counterText: '',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(16),
                     borderSide: BorderSide(color: Color(0xFFE0E0E0), width: 1),
