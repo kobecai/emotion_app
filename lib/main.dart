@@ -5,7 +5,13 @@ import 'ui/app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final analyticsEnabled = await AppSettings.getAnalyticsEnabled();
+  final storedAnalyticsEnabled = await AppSettings.getAnalyticsEnabled();
+  const forceAnalyticsEnabled =
+      bool.fromEnvironment('ANALYTICS_ENABLED', defaultValue: false);
+  final analyticsEnabled = forceAnalyticsEnabled || storedAnalyticsEnabled;
+  if (forceAnalyticsEnabled && !storedAnalyticsEnabled) {
+    await AppSettings.setAnalyticsEnabled(true);
+  }
   await PosthogAnalytics.instance.init(enabled: analyticsEnabled);
   if (analyticsEnabled) {
     PosthogAnalytics.instance.trackAppOpen();

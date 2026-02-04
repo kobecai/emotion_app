@@ -66,7 +66,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   static const double _rotationStage3Seconds = 1.2;
   static const double _rotationStage4Seconds = 2.4;
   static const double _rotationStartDegPerSec = 80.0;
-  static const double _rotationPeakDegPerSec = 160.0;
+  static const double _rotationPeakDegPerSec = 150.0;
   static const double _rotationMidLowDegPerSec = 70.0;
   static const double _rotationMidHighDegPerSec = 140.0;
   static const double _rotationEndDegPerSec = 60.0;

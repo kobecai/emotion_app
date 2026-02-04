@@ -153,11 +153,16 @@ class PosthogAnalytics {
     };
 
     try {
-      await _client.post(
+      final response = await _client.post(
         Uri.parse('$_host/capture'),
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode(payload),
       );
+      if (kDebugMode && response.statusCode >= 300) {
+        debugPrint(
+          'PostHog tracking failed: ${response.statusCode} ${response.body}',
+        );
+      }
     } catch (error) {
       if (kDebugMode) {
         debugPrint('PostHog tracking failed: $error');

@@ -76,10 +76,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _navigateToAfterScreen(double duration) async {
     if (selectedEmotion == null) return;
+    final emotion = selectedEmotion!;
+    setState(() {
+      selectedEmotion = null;
+    });
     final result = await Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
-            DoneScreen(emotion: selectedEmotion!, duration: duration),
+            DoneScreen(emotion: emotion, duration: duration),
         transitionsBuilder: (context, animation, secondaryAnimation, child) {
           return FadeTransition(opacity: animation, child: child);
         },
@@ -87,9 +91,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
     if (result is ReleaseEntry) {
-      setState(() {
-        selectedEmotion = null;
-      });
+      return;
     }
   }
 
