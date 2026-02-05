@@ -15,7 +15,7 @@ class PosthogAnalytics {
   static const String _host = 'https://us.i.posthog.com';
   static const String _deviceIdKey = 'analytics_device_id';
 
-  final http.Client _client = http.Client();
+  http.Client? _client;
   final Uuid _uuid = const Uuid();
 
   String? _deviceId;
@@ -24,6 +24,15 @@ class PosthogAnalytics {
   DateTime? _emotionSelectedTime;
   bool _initialized = false;
   bool _enabled = false;
+
+  http.Client _ensureClient() {
+    return _client ??= http.Client();
+  }
+
+  void _closeClient() {
+    _client?.close();
+    _client = null;
+  }
 
   Future<void> init({required bool enabled}) async {
     if (_initialized) return;
@@ -45,7 +54,13 @@ class PosthogAnalytics {
 
   Future<void> setEnabled(bool enabled) async {
     _enabled = enabled;
-    if (!_enabled) return;
+    if (!_enabled) {
+      _sessionId = null;
+      _appStartTime = null;
+      _emotionSelectedTime = null;
+      _closeClient();
+      return;
+    }
     if (_deviceId != null) return;
     final prefs = await SharedPreferences.getInstance();
     final storedId = prefs.getString(_deviceIdKey);
@@ -55,6 +70,16 @@ class PosthogAnalytics {
       _deviceId = _uuid.v4();
       await prefs.setString(_deviceIdKey, _deviceId!);
     }
+    _initialized = true;
+  }
+
+  void dispose() {
+    _enabled = false;
+    _initialized = false;
+    _sessionId = null;
+    _appStartTime = null;
+    _emotionSelectedTime = null;
+    _closeClient();
   }
 
   void trackAppOpen() {
@@ -153,11 +178,11 @@ class PosthogAnalytics {
     };
 
     try {
-      final response = await _client.post(
+      final response = await _ensureClient().post(
         Uri.parse('$_host/capture'),
         headers: const {'Content-Type': 'application/json'},
         body: jsonEncode(payload),
-      );
+      ).timeout(const Duration(seconds: 8));
       if (kDebugMode && response.statusCode >= 300) {
         debugPrint(
           'PostHog tracking failed: ${response.statusCode} ${response.body}',
