@@ -45,6 +45,8 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   double _releaseStartOpacity = 0.0;
   double _releaseStartStroke = 0.0;
   double _releaseStartSweep = 0.0;
+  double _releaseSettleStrength = 0.0;
+  Duration _releaseSettleDuration = Duration.zero;
 
   static const double _defaultRingSize = 200.0;
   static const double _minRingSize = 160.0;
@@ -59,7 +61,13 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   static const double _breathScaleMax = 1.12;
   static const double _breathOpacityMin = 0.6;
   static const double _breathOpacityMax = 0.75;
-  static const double _releaseScaleMin = 0.85;
+  static const double _releaseEndScale = 0.85;
+  static const double _settleMaxScaleDrop = 0.02;
+  static const Duration _settleMinDuration = Duration(milliseconds: 80);
+  static const Duration _settleMaxDuration = Duration(milliseconds: 120);
+  static const double _settleStartThreshold = _rotationCycleSeconds * 0.6;
+  static const double _settleFullThreshold = _rotationCycleSeconds * 0.8;
+  static const double _settleOpacityMax = 0.08;
   static const double _rotationCycleSeconds = 6.0;
   static const double _rotationStage1Seconds = 0.6;
   static const double _rotationStage2Seconds = 1.8;
@@ -246,6 +254,14 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
     _releaseStartOpacity = _opacityForSeconds(holdSeconds);
     _releaseStartStroke = _strokeForSeconds(holdSeconds);
     _releaseStartSweep = _holdSweep;
+    _releaseSettleStrength = _computeSettleStrength(holdSeconds);
+    _releaseSettleDuration = _releaseSettleStrength > 0
+        ? _lerpDuration(
+            _settleMinDuration,
+            _settleMaxDuration,
+            _releaseSettleStrength,
+          )
+        : Duration.zero;
 
     HapticFeedback.lightImpact();
 
@@ -256,9 +272,24 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
 
     _pendingReleaseSeconds = seconds;
     widget.onHoldEnd?.call(seconds);
+    _releaseController.duration = _releaseDuration + _releaseSettleDuration;
     _releaseController.forward(from: 0.0);
 
     _pressStartTime = null;
+  }
+
+  double _computeSettleStrength(double holdSeconds) {
+    if (holdSeconds < _settleStartThreshold) return 0.0;
+    if (holdSeconds >= _settleFullThreshold) return 1.0;
+    return ((holdSeconds - _settleStartThreshold) /
+            (_settleFullThreshold - _settleStartThreshold))
+        .clamp(0.0, 1.0);
+  }
+
+  Duration _lerpDuration(Duration a, Duration b, double t) {
+    final ms = lerpDouble(a.inMilliseconds, b.inMilliseconds, t) ??
+        b.inMilliseconds;
+    return Duration(milliseconds: ms.round());
   }
 
   double _rotationSpeedForSeconds(double t) {
@@ -347,10 +378,17 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
 
     if (_isReleasing) {
       final double t = _releaseController.value;
+      final int totalMs =
+          _releaseController.duration?.inMilliseconds ??
+          _releaseDuration.inMilliseconds;
+      final int settleMs = _releaseSettleDuration.inMilliseconds;
       final double closePhaseT =
           (_releaseCloseDuration.inMilliseconds /
-                  _releaseDuration.inMilliseconds)
+                  totalMs)
               .clamp(0.0, 1.0);
+      final double settlePhaseT = (settleMs / totalMs).clamp(0.0, 1.0);
+      final double collapsePhaseT =
+          (1.0 - closePhaseT - settlePhaseT).clamp(0.0, 1.0);
       if (t <= closePhaseT && closePhaseT > 0) {
         final double easedT = Curves.easeOutCubic.transform(
           (t / closePhaseT).clamp(0.0, 1.0),
@@ -365,25 +403,59 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
               _releaseStartSweep,
         );
       }
-      final double collapseT = ((t - closePhaseT) / (1 - closePhaseT)).clamp(
-        0.0,
-        1.0,
-      );
+      if (collapsePhaseT > 0 && t <= closePhaseT + collapsePhaseT) {
+        final double collapseT =
+            ((t - closePhaseT) / collapsePhaseT).clamp(0.0, 1.0);
+        final double collapseEndOpacity = _releaseSettleStrength > 0
+            ? _settleOpacityMax * _releaseSettleStrength
+            : 0.0;
+        return _RingVisual(
+          rotation: _releaseStartRotation,
+          radius:
+              lerpDouble(
+                _releaseStartRadius,
+                _baseRadius * _releaseEndScale,
+                Curves.easeInOutCubic.transform(collapseT),
+              ) ??
+              _releaseStartRadius,
+          strokeWidth:
+              lerpDouble(_releaseStartStroke, 0.0, collapseT) ??
+              _releaseStartStroke,
+          opacity:
+              lerpDouble(_releaseStartOpacity, collapseEndOpacity, collapseT) ??
+              _releaseStartOpacity,
+          sweep: 2 * math.pi,
+        );
+      }
+      if (settlePhaseT > 0) {
+        final double settleT =
+            ((t - closePhaseT - collapsePhaseT) / settlePhaseT).clamp(
+          0.0,
+          1.0,
+        );
+        final double easedSettle = Curves.easeOutCubic.transform(settleT);
+        final double startOpacity = _settleOpacityMax * _releaseSettleStrength;
+        final double endScale =
+            _releaseEndScale - (_settleMaxScaleDrop * _releaseSettleStrength);
+        return _RingVisual(
+          rotation: _releaseStartRotation,
+          radius:
+              lerpDouble(
+                _baseRadius * _releaseEndScale,
+                _baseRadius * endScale,
+                easedSettle,
+              ) ??
+              _baseRadius * _releaseEndScale,
+          strokeWidth: 0.0,
+          opacity: lerpDouble(startOpacity, 0.0, easedSettle) ?? 0.0,
+          sweep: 2 * math.pi,
+        );
+      }
       return _RingVisual(
         rotation: _releaseStartRotation,
-        radius:
-            lerpDouble(
-              _releaseStartRadius,
-              _baseRadius * _releaseScaleMin,
-              collapseT,
-            ) ??
-            _releaseStartRadius,
-        strokeWidth:
-            lerpDouble(_releaseStartStroke, 0.0, collapseT) ??
-            _releaseStartStroke,
-        opacity:
-            lerpDouble(_releaseStartOpacity, 0.0, collapseT) ??
-            _releaseStartOpacity,
+        radius: _baseRadius * _releaseEndScale,
+        strokeWidth: 0.0,
+        opacity: 0.0,
         sweep: 2 * math.pi,
       );
     }
