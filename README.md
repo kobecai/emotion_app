@@ -1,16 +1,12 @@
-# emotion_app
+# Emotion Release
 
-A new Flutter project.
+Emotion Release is a private, low-commitment emotional release app designed for intense moments.
 
-## Getting Started
+## Product Promise
 
-This project is a starting point for a Flutter application.
+No analysis. No judgment. Just release, acknowledge, and exit.
 
-A few resources to get you started if this is your first Flutter project:
+## Release Metadata
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
-
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+- Store listing copy: `docs/app-store-desc.md`
+- Branding and icon checklist: `docs/release-branding.md`

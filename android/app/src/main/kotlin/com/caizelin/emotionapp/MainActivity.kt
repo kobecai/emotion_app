@@ -1,4 +1,4 @@
-package com.example.emotion_app
+package com.caizelin.emotionapp
 
 import io.flutter.embedding.android.FlutterActivity
 
