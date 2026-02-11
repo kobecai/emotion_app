@@ -9,7 +9,7 @@ class LetGoApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'LETGO',
+      title: 'LET GO',
       theme: AppTheme.lightTheme,
       home: const HomeScreen(),
     );

@@ -5,8 +5,7 @@ import 'ui/app.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final storedAnalyticsEnabled = await AppSettings.getAnalyticsEnabled();
-  final analyticsEnabled = storedAnalyticsEnabled;
+  final analyticsEnabled = await AppSettings.getAnalyticsEnabled();
   await PosthogAnalytics.instance.init(enabled: analyticsEnabled);
   if (analyticsEnabled) {
     PosthogAnalytics.instance.trackAppOpen();

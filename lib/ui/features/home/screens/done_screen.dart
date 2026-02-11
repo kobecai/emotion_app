@@ -58,7 +58,7 @@ class _DoneScreenState extends State<DoneScreen>
       emotionLabel: widget.emotion.label,
       durationSeconds: widget.duration,
     );
-    final doneEnableStartMs = _computeDoneEnableStartMs();
+    const doneEnableStartMs = _minDoneEnableMs;
     _timelineMs = _computeTimelineMs(doneEnableStartMs);
     _timelineController = AnimationController(
       duration: Duration(milliseconds: _timelineMs),
@@ -99,10 +99,6 @@ class _DoneScreenState extends State<DoneScreen>
       parent: _timelineController,
       curve: Interval(start, end, curve: curve),
     );
-  }
-
-  int _computeDoneEnableStartMs() {
-    return _minDoneEnableMs;
   }
 
   int _computeTimelineMs(int doneEnableStartMs) {
@@ -393,10 +389,7 @@ class _DoneScreenState extends State<DoneScreen>
                               ignoring: value == 0,
                               child: Opacity(
                                 opacity: opacity,
-                                child: Transform.translate(
-                                  offset: Offset(0, (1 - value) * 0),
-                                  child: child,
-                                ),
+                                child: child,
                               ),
                             );
                           },

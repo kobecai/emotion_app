@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/material.dart';
 import '../../../../data/local/release_storage.dart';
 import '../../../../domain/models/release_entry.dart';
@@ -14,11 +12,6 @@ class HistoryScreen extends StatefulWidget {
 
 class _HistoryScreenState extends State<HistoryScreen> {
   static const double _detailMaxHeightFactor = 0.6;
-
-  @override
-  void dispose() {
-    super.dispose();
-  }
 
   String _formatDate(DateTime date) {
     const months = [
@@ -105,6 +98,30 @@ class _HistoryScreenState extends State<HistoryScreen> {
     );
   }
 
+  Widget _buildDoneButton() {
+    return SizedBox(
+      width: double.infinity,
+      child: ElevatedButton(
+        onPressed: () => Navigator.of(context).pop(),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFE0E0E0),
+          foregroundColor: AppTheme.textPrimary,
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          elevation: 0,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        ),
+        child: const Text(
+          'Done',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w600,
+            letterSpacing: 1.0,
+          ),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final bottomInset = MediaQuery.of(context).padding.bottom;
@@ -144,29 +161,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     top: 24,
                     bottom: 24 + bottomInset,
                   ),
-                  child: SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFE0E0E0),
-                        foregroundColor: AppTheme.textPrimary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(28),
-                        ),
-                      ),
-                      child: const Text(
-                        'Done',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
-                    ),
-                  ),
+                  child: _buildDoneButton(),
                 ),
               ],
             );
@@ -202,29 +197,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   top: 24,
                   bottom: 24 + bottomInset,
                 ),
-                child: SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(context).pop(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFE0E0E0),
-                      foregroundColor: AppTheme.textPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(28),
-                      ),
-                    ),
-                    child: const Text(
-                      'Done',
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 1.0,
-                      ),
-                    ),
-                  ),
-                ),
+                child: _buildDoneButton(),
               ),
             ],
           );

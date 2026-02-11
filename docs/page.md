@@ -1,3 +1,186 @@
+# Emotion App Page Structure (Code-Aligned)
+
+This document describes the page structure that is currently implemented in code.
+
+- App entry: `lib/main.dart`
+- App shell: `lib/ui/app.dart`
+- Main pages:
+  - `lib/ui/features/home/screens/home_screen.dart`
+  - `lib/ui/features/home/screens/done_screen.dart`
+  - `lib/ui/features/history/screens/history_screen.dart`
+
+---
+
+## 1) App Flow
+
+```text
+HomeScreen
+  -> (Select emotion)
+  -> (Press and hold on HoldReleaseButton)
+  -> DoneScreen
+      -> Done (save release entry if needed, then pop to HomeScreen)
+      -> Save a note (open bottom sheet)
+          -> Save note (entry saved with note)
+          -> Your moments (optional, if existing notes) -> HistoryScreen
+```
+
+Important notes:
+- `HistoryScreen` is not a top-level tab/page. It is entered from the note bottom sheet in `DoneScreen`.
+- `DoneScreen` auto-exits after 4500ms only if the user has not interacted.
+
+---
+
+## 2) HomeScreen
+
+File: `lib/ui/features/home/screens/home_screen.dart`
+
+### Widget Structure
+
+```text
+Scaffold
+└── SafeArea
+    └── SingleChildScrollView
+        └── Center
+            └── ConstrainedBox(maxWidth: 560)
+                └── ConstrainedBox(minHeight: viewport)
+                    └── Column
+                        ├── Row
+                        │   ├── Text("LET GO")
+                        │   └── IconButton(info) -> showInfoSheet
+                        ├── UpgradeCard (conditional)
+                        ├── EmotionSelector
+                        ├── AnimatedOpacity("Press and hold", conditional opacity)
+                        └── HoldReleaseButton
+```
+
+### Key Behavior
+
+- Shows safety dialog on first launch (terms acceptance gate).
+- Loads whether update card can be shown only after first release is completed.
+- `EmotionSelector` supports selection for:
+  - Angry
+  - Sad
+  - Anxious
+  - Overwhelmed
+- `HoldReleaseButton` is enabled only when an emotion is selected.
+- On release:
+  - Marks first release completed.
+  - Clears selected emotion in Home.
+  - Navigates to `DoneScreen` with `emotion` + `duration`.
+
+### Related Components
+
+- `lib/ui/features/home/widgets/emotion_selector.dart`
+- `lib/ui/features/home/widgets/hold_release_button.dart`
+- `lib/ui/features/home/widgets/info_sheet.dart`
+
+---
+
+## 3) DoneScreen
+
+File: `lib/ui/features/home/screens/done_screen.dart`
+
+### Widget Structure
+
+```text
+Scaffold
+└── SafeArea
+    └── Listener(pointer down -> disable auto-exit)
+        └── LayoutBuilder
+            └── AnimatedOpacity(exit fade)
+                └── SingleChildScrollView
+                    └── ConstrainedBox(minHeight: availableHeight)
+                        └── Column
+                            ├── "You let it out."
+                            ├── "You held onto {emotion} for {seconds} seconds."
+                            ├── ReleaseVisualization
+                            ├── "Save a note" / "✓ Note saved"
+                            └── Done button
+```
+
+### Timeline (current constants)
+
+- Title + subtext begin appearing at start.
+- Release bars start after 300ms.
+- Done button appears around 600-800ms and becomes enabled after minimum safety time.
+- Note CTA appears around 1200-1500ms.
+- Auto-exit timer: 4500ms (cancelled after first user interaction).
+
+### Note Bottom Sheet
+
+- Title: `Write a note`
+- Text input max length: 150
+- Save button enabled only when note is not empty after trim.
+- If user already has note entries, shows `Your moments` link to open `HistoryScreen`.
+- Saving a note sets local state and shows `✓ Note saved` hint briefly.
+
+### Data Persistence
+
+- On Done:
+  - If note already saved in this session, pop with saved entry.
+  - Otherwise create and save a basic entry (emotion + duration + timestamp).
+
+---
+
+## 4) HistoryScreen
+
+File: `lib/ui/features/history/screens/history_screen.dart`
+
+### Widget Structure
+
+```text
+Scaffold
+├── AppBar("Your moments")
+└── FutureBuilder(loadEntries)
+    ├── Loading -> CircularProgressIndicator
+    ├── Empty -> "Nothing here yet." + Done button
+    └── List -> note-only entries + Done button
+```
+
+### Key Behavior
+
+- Loads entries from `ReleaseStorage`.
+- Filters to entries with non-empty `note`.
+- Sorts by `createdAt` descending.
+- Tapping a history item opens a detail dialog showing:
+  - formatted date/time
+  - full note text
+
+---
+
+## 5) Shared Local Data
+
+File: `lib/data/local/release_storage.dart`
+
+Current storage behavior:
+- Key: `release_entries` in `SharedPreferences`
+- Stores entries as JSON string list
+- New entries are prepended
+- Keeps latest 30 entries only
+- `hasNotes()` checks if any saved entry has non-empty note
+
+---
+
+## 6) Analytics and Settings Related to Page Flow
+
+- Analytics init and app-open tracking: `lib/main.dart`
+- Home / Done / Hold interactions tracked through:
+  - `lib/data/analytics/posthog_analytics.dart`
+- Terms acceptance and analytics toggle:
+  - `lib/data/local/app_settings.dart`
+  - `lib/ui/features/home/widgets/info_sheet.dart`
+
+---
+
+## 7) Removed / Not Implemented in Current UI
+
+The following concepts are not present in current page implementation:
+
+- Home "From last time" optional note block
+- Done feedback choices like "Lighter / Same / Still heavy"
+- Standalone History entry path outside Done note flow
+
+This file should be considered the source of truth for current implemented page structure.
 很好，这一步我们就**完全落到工程层**。
 下面是 **严格对应你 MVP 方案的 3 个页面 Flutter 组件层级结构**，不是示意图，而是**你可以直接照着写 Widget 的结构蓝图**。
 

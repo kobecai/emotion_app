@@ -15,6 +15,6 @@ void main() {
     await tester.pumpWidget(const LetGoApp());
 
     // Verify that the home screen renders the title.
-    expect(find.text('LETGO'), findsOneWidget);
+    expect(find.text('LET GO'), findsOneWidget);
   });
 }

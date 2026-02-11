@@ -2,7 +2,6 @@ import 'dart:convert';
 
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../../domain/models/emotion.dart';
 import '../../domain/models/release_entry.dart';
 
 class ReleaseStorage {
@@ -20,28 +19,9 @@ class ReleaseStorage {
         .toList();
   }
 
-  Future<ReleaseEntry?> loadLatest() async {
-    final entries = await loadEntries();
-    if (entries.isEmpty) return null;
-    return entries.first;
-  }
-
   Future<bool> hasNotes() async {
     final entries = await loadEntries();
     return entries.any((entry) => (entry.note?.trim() ?? '').isNotEmpty);
-  }
-
-  Future<ReleaseEntry?> findLatestMatchingNote({
-    required Emotion emotion,
-  }) async {
-    final entries = await loadEntries();
-    for (final entry in entries) {
-      final note = entry.note?.trim() ?? '';
-      if (note.isEmpty) continue;
-      if (entry.emotion != emotion) continue;
-      return entry;
-    }
-    return null;
   }
 
   Future<void> saveEntry(ReleaseEntry entry) async {

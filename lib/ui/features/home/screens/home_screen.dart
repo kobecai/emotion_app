@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:upgrader/upgrader.dart';
 import '../../../../domain/models/emotion.dart';
-import '../../../../domain/models/release_entry.dart';
 import '../../../../data/analytics/posthog_analytics.dart';
 import '../../../../data/local/app_settings.dart';
 import '../../../core/themes/app_theme.dart';
@@ -9,6 +9,9 @@ import '../widgets/emotion_selector.dart';
 import '../widgets/hold_release_button.dart';
 import '../widgets/info_sheet.dart';
 import 'done_screen.dart';
+
+// Debug-only switch for manually testing upgrader UI.
+const bool _debugForceShowUpgradeCard = false;
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -21,7 +24,33 @@ class _HomeScreenState extends State<HomeScreen> {
   Emotion? selectedEmotion;
   late final Upgrader _upgrader;
   bool _canShowUpdateCard = false;
+  bool _hasCompletedReleaseThisSession = false;
+  bool _upgraderReady = false;
+  bool _dismissedUpdateCardForSession = false;
   bool _didTrackUpdateCardShown = false;
+  bool get _isDebugForcedUpgradeCard =>
+      kDebugMode && _debugForceShowUpgradeCard;
+  bool get _isUpgradeCardEnabledByReleaseFlow =>
+      _canShowUpdateCard && _hasCompletedReleaseThisSession;
+  bool get _isUpgradeCardEnabledForCurrentSession =>
+      !_dismissedUpdateCardForSession &&
+      (_isUpgradeCardEnabledByReleaseFlow || _isDebugForcedUpgradeCard);
+  bool get _hasStoreVersion =>
+      (_upgrader.currentAppStoreVersion?.isNotEmpty ?? false);
+  bool get _canRenderUpgradeCardForNormalUser =>
+      _isUpgradeCardEnabledByReleaseFlow && _hasStoreVersion;
+  bool get _shouldRenderUpgradeCard {
+    if (!_upgraderReady || !_isUpgradeCardEnabledForCurrentSession) {
+      return false;
+    }
+    if (_isDebugForcedUpgradeCard) return true;
+    return _canRenderUpgradeCardForNormalUser;
+  }
+
+  bool _shouldTrackUpgradeCardShown({required bool display}) {
+    if (!display || _didTrackUpdateCardShown) return false;
+    return _isUpgradeCardEnabledForCurrentSession;
+  }
 
   @override
   void initState() {
@@ -29,16 +58,17 @@ class _HomeScreenState extends State<HomeScreen> {
     _upgrader = Upgrader(
       countryCode: 'US',
       languageCode: 'en',
-      durationUntilAlertAgain: const Duration(days: 7),
+      durationUntilAlertAgain:
+          _isDebugForcedUpgradeCard ? Duration.zero : const Duration(days: 7),
+      debugDisplayAlways: _isDebugForcedUpgradeCard,
+      debugLogging: _isDebugForcedUpgradeCard,
       messages: _GentleUpgradeMessages(),
       willDisplayUpgrade: ({
         required bool display,
         String? installedVersion,
         UpgraderVersionInfo? versionInfo,
       }) {
-        if (!display || !_canShowUpdateCard || _didTrackUpdateCardShown) {
-          return;
-        }
+        if (!_shouldTrackUpgradeCardShown(display: display)) return;
         _didTrackUpdateCardShown = true;
         PosthogAnalytics.instance.trackUpdateCardShown(
           installedVersion: installedVersion,
@@ -46,8 +76,17 @@ class _HomeScreenState extends State<HomeScreen> {
         );
       },
     );
+    _initializeUpgraderAndEvaluate();
     _maybeShowSafetyDialog();
     _loadUpdateCardVisibility();
+  }
+
+  Future<void> _initializeUpgraderAndEvaluate() async {
+    await _upgrader.initialize();
+    if (!mounted) return;
+    setState(() {
+      _upgraderReady = true;
+    });
   }
 
   Future<void> _loadUpdateCardVisibility() async {
@@ -59,10 +98,13 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Future<void> _markFirstReleaseCompleted() async {
-    if (_canShowUpdateCard) return;
-    await AppSettings.setHasCompletedFirstRelease(true);
+    if (_canShowUpdateCard && _hasCompletedReleaseThisSession) return;
+    if (!_canShowUpdateCard) {
+      await AppSettings.setHasCompletedFirstRelease(true);
+    }
     if (!mounted) return;
     setState(() {
+      _hasCompletedReleaseThisSession = true;
       _canShowUpdateCard = true;
     });
   }
@@ -109,6 +151,13 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
+  void _dismissUpdateCardForSession() {
+    if (_dismissedUpdateCardForSession) return;
+    setState(() {
+      _dismissedUpdateCardForSession = true;
+    });
+  }
+
   void _onEmotionSelected(Emotion emotion) {
     setState(() {
       selectedEmotion = emotion;
@@ -123,7 +172,7 @@ class _HomeScreenState extends State<HomeScreen> {
     setState(() {
       selectedEmotion = null;
     });
-    final result = await Navigator.of(context).push(
+    await Navigator.of(context).push(
       PageRouteBuilder(
         pageBuilder: (context, animation, secondaryAnimation) =>
             DoneScreen(emotion: emotion, duration: duration),
@@ -133,9 +182,6 @@ class _HomeScreenState extends State<HomeScreen> {
         transitionDuration: const Duration(milliseconds: 400),
       ),
     );
-    if (result is ReleaseEntry) {
-      return;
-    }
   }
 
   @override
@@ -153,110 +199,128 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Scaffold(
       body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(
-            horizontal: AppTheme.pageHorizontalPadding,
-          ),
-          child: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 560),
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight:
-                      MediaQuery.of(context).size.height -
-                      MediaQuery.of(context).padding.vertical,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SizedBox(height: topGap),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: Stack(
+          children: [
+            SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppTheme.pageHorizontalPadding,
+              ),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 560),
+                  child: ConstrainedBox(
+                    constraints: BoxConstraints(
+                      minHeight:
+                          MediaQuery.of(context).size.height -
+                          MediaQuery.of(context).padding.vertical,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('LET GO', style: AppTheme.logoStyle),
-                        IconButton(
-                          onPressed: () => showInfoSheet(context),
-                          icon: const Icon(Icons.info_outline),
-                          color: AppTheme.textSecondary,
+                        SizedBox(height: topGap),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text('LET GO', style: AppTheme.logoStyle),
+                            IconButton(
+                              onPressed: () => showInfoSheet(context),
+                              icon: const Icon(Icons.info_outline),
+                              color: AppTheme.textSecondary,
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    if (_canShowUpdateCard)
-                      Container(
-                        margin: const EdgeInsets.only(top: 12),
-                        child: UpgradeCard(
-                          upgrader: _upgrader,
-                          showIgnore: false,
-                          showLater: true,
-                          showReleaseNotes: false,
-                          onLater: () {
-                            PosthogAnalytics.instance.trackUpdateLaterTapped(
-                              installedVersion: _upgrader.currentInstalledVersion,
-                              storeVersion: _upgrader.currentAppStoreVersion,
-                            );
-                          },
-                          onUpdate: () {
-                            PosthogAnalytics.instance.trackUpdateNowTapped(
-                              installedVersion: _upgrader.currentInstalledVersion,
-                              storeVersion: _upgrader.currentAppStoreVersion,
-                              storeUrl: _upgrader.currentAppStoreListingURL,
-                            );
-                            return true;
-                          },
+                        const SizedBox(height: 16),
+                        EmotionSelector(
+                          selectedEmotion: selectedEmotion,
+                          onEmotionSelected: _onEmotionSelected,
                         ),
-                      ),
-                    const SizedBox(height: 16),
-                    EmotionSelector(
-                      selectedEmotion: selectedEmotion,
-                      onEmotionSelected: _onEmotionSelected,
-                    ),
-                    SizedBox(height: middleGap),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: AnimatedOpacity(
-                        duration: const Duration(milliseconds: 200),
-                        opacity: selectedEmotion != null ? 1.0 : 0.0,
-                        child: const Text(
-                          'Press and hold',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFFC0C0C0),
-                            height: 1.4,
+                        SizedBox(height: middleGap),
+                        Align(
+                          alignment: Alignment.centerLeft,
+                          child: AnimatedOpacity(
+                            duration: const Duration(milliseconds: 200),
+                            opacity: selectedEmotion != null ? 1.0 : 0.0,
+                            child: const Text(
+                              'Press and hold',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                                color: Color(0xFFC0C0C0),
+                                height: 1.4,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
+                        const SizedBox(height: 16),
+                        Align(
+                          alignment: Alignment.center,
+                          child: HoldReleaseButton(
+                            onRelease: _navigateToAfterScreen,
+                            isEnabled: selectedEmotion != null,
+                            onHoldStart: selectedEmotion == null
+                                ? null
+                                : () {
+                                    PosthogAnalytics.instance.trackHoldStart(
+                                      emotionLabel: selectedEmotion!.label,
+                                    );
+                                  },
+                            onHoldEnd: selectedEmotion == null
+                                ? null
+                                : (seconds, releaseReason) {
+                                    PosthogAnalytics.instance.trackHoldReleased(
+                                      emotionLabel: selectedEmotion!.label,
+                                      durationSeconds: seconds,
+                                      releaseReason: releaseReason,
+                                    );
+                                  },
+                          ),
+                        ),
+                        SizedBox(height: bottomGap),
+                      ],
                     ),
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.center,
-                      child: HoldReleaseButton(
-                        onRelease: _navigateToAfterScreen,
-                        isEnabled: selectedEmotion != null,
-                        onHoldStart: selectedEmotion == null
-                            ? null
-                            : () {
-                                PosthogAnalytics.instance.trackHoldStart(
-                                  emotionLabel: selectedEmotion!.label,
-                                );
-                              },
-                        onHoldEnd: selectedEmotion == null
-                            ? null
-                            : (seconds, releaseReason) {
-                                PosthogAnalytics.instance.trackHoldReleased(
-                                  emotionLabel: selectedEmotion!.label,
-                                  durationSeconds: seconds,
-                                  releaseReason: releaseReason,
-                                );
-                              },
-                      ),
-                    ),
-                    SizedBox(height: bottomGap),
-                  ],
+                  ),
                 ),
               ),
             ),
-          ),
+            if (_shouldRenderUpgradeCard)
+              Align(
+                alignment: Alignment.topCenter,
+                child: Padding(
+                  padding: EdgeInsets.fromLTRB(
+                    AppTheme.pageHorizontalPadding,
+                    topGap + 52,
+                    AppTheme.pageHorizontalPadding,
+                    0,
+                  ),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 560),
+                    child: UpgradeCard(
+                      upgrader: _upgrader,
+                      margin: EdgeInsets.zero,
+                      showIgnore: false,
+                      showLater: true,
+                      showReleaseNotes: false,
+                      onLater: () {
+                        _dismissUpdateCardForSession();
+                        PosthogAnalytics.instance.trackUpdateLaterTapped(
+                          installedVersion: _upgrader.currentInstalledVersion,
+                          storeVersion: _upgrader.currentAppStoreVersion,
+                        );
+                      },
+                      onUpdate: () {
+                        _dismissUpdateCardForSession();
+                        PosthogAnalytics.instance.trackUpdateNowTapped(
+                          installedVersion: _upgrader.currentInstalledVersion,
+                          storeVersion: _upgrader.currentAppStoreVersion,
+                          storeUrl: _upgrader.currentAppStoreListingURL,
+                        );
+                        return true;
+                      },
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );
