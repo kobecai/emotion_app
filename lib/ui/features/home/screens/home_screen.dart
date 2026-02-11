@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:upgrader/upgrader.dart';
 import '../../../../domain/models/emotion.dart';
 import '../../../../domain/models/release_entry.dart';
 import '../../../../data/analytics/posthog_analytics.dart';
@@ -18,11 +19,52 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   Emotion? selectedEmotion;
+  late final Upgrader _upgrader;
+  bool _canShowUpdateCard = false;
+  bool _didTrackUpdateCardShown = false;
 
   @override
   void initState() {
     super.initState();
+    _upgrader = Upgrader(
+      countryCode: 'US',
+      languageCode: 'en',
+      durationUntilAlertAgain: const Duration(days: 7),
+      messages: _GentleUpgradeMessages(),
+      willDisplayUpgrade: ({
+        required bool display,
+        String? installedVersion,
+        UpgraderVersionInfo? versionInfo,
+      }) {
+        if (!display || !_canShowUpdateCard || _didTrackUpdateCardShown) {
+          return;
+        }
+        _didTrackUpdateCardShown = true;
+        PosthogAnalytics.instance.trackUpdateCardShown(
+          installedVersion: installedVersion,
+          storeVersion: versionInfo?.appStoreVersion?.toString(),
+        );
+      },
+    );
     _maybeShowSafetyDialog();
+    _loadUpdateCardVisibility();
+  }
+
+  Future<void> _loadUpdateCardVisibility() async {
+    final completed = await AppSettings.getHasCompletedFirstRelease();
+    if (!mounted) return;
+    setState(() {
+      _canShowUpdateCard = completed;
+    });
+  }
+
+  Future<void> _markFirstReleaseCompleted() async {
+    if (_canShowUpdateCard) return;
+    await AppSettings.setHasCompletedFirstRelease(true);
+    if (!mounted) return;
+    setState(() {
+      _canShowUpdateCard = true;
+    });
   }
 
   Future<void> _maybeShowSafetyDialog() async {
@@ -77,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _navigateToAfterScreen(double duration) async {
     if (selectedEmotion == null) return;
     final emotion = selectedEmotion!;
+    await _markFirstReleaseCompleted();
     setState(() {
       selectedEmotion = null;
     });
@@ -138,6 +181,30 @@ class _HomeScreenState extends State<HomeScreen> {
                         ),
                       ],
                     ),
+                    if (_canShowUpdateCard)
+                      Container(
+                        margin: const EdgeInsets.only(top: 12),
+                        child: UpgradeCard(
+                          upgrader: _upgrader,
+                          showIgnore: false,
+                          showLater: true,
+                          showReleaseNotes: false,
+                          onLater: () {
+                            PosthogAnalytics.instance.trackUpdateLaterTapped(
+                              installedVersion: _upgrader.currentInstalledVersion,
+                              storeVersion: _upgrader.currentAppStoreVersion,
+                            );
+                          },
+                          onUpdate: () {
+                            PosthogAnalytics.instance.trackUpdateNowTapped(
+                              installedVersion: _upgrader.currentInstalledVersion,
+                              storeVersion: _upgrader.currentAppStoreVersion,
+                              storeUrl: _upgrader.currentAppStoreListingURL,
+                            );
+                            return true;
+                          },
+                        ),
+                      ),
                     const SizedBox(height: 16),
                     EmotionSelector(
                       selectedEmotion: selectedEmotion,
@@ -194,4 +261,23 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+}
+
+class _GentleUpgradeMessages extends UpgraderMessages {
+  @override
+  String get title => 'A small update is available';
+
+  @override
+  String get body =>
+      'Version {{currentAppStoreVersion}} is available. '
+      'You are on {{currentInstalledVersion}}.';
+
+  @override
+  String get prompt => 'Update anytime for the latest improvements.';
+
+  @override
+  String get buttonTitleLater => 'Not now';
+
+  @override
+  String get buttonTitleUpdate => 'Update';
 }

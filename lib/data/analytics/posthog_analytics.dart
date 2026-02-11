@@ -192,6 +192,50 @@ class PosthogAnalytics {
     );
   }
 
+  void trackUpdateCardShown({
+    String? installedVersion,
+    String? storeVersion,
+  }) {
+    _track(
+      'update_card_shown',
+      properties: {
+        'session_id': _sessionId,
+        'installed_version': installedVersion,
+        'store_version': storeVersion,
+      },
+    );
+  }
+
+  void trackUpdateLaterTapped({
+    String? installedVersion,
+    String? storeVersion,
+  }) {
+    _track(
+      'update_later_tapped',
+      properties: {
+        'session_id': _sessionId,
+        'installed_version': installedVersion,
+        'store_version': storeVersion,
+      },
+    );
+  }
+
+  void trackUpdateNowTapped({
+    String? installedVersion,
+    String? storeVersion,
+    String? storeUrl,
+  }) {
+    _track(
+      'update_now_tapped',
+      properties: {
+        'session_id': _sessionId,
+        'installed_version': installedVersion,
+        'store_version': storeVersion,
+        'store_url': storeUrl,
+      },
+    );
+  }
+
   int? _msSince(DateTime? start) {
     if (start == null) return null;
     return DateTime.now().difference(start).inMilliseconds;
