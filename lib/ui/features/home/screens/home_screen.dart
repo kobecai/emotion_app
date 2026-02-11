@@ -175,10 +175,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               },
                         onHoldEnd: selectedEmotion == null
                             ? null
-                            : (seconds) {
+                            : (seconds, releaseReason) {
                                 PosthogAnalytics.instance.trackHoldReleased(
                                   emotionLabel: selectedEmotion!.label,
                                   durationSeconds: seconds,
+                                  releaseReason: releaseReason,
                                 );
                               },
                       ),

@@ -10,7 +10,7 @@ class HoldReleaseButton extends StatefulWidget {
   final ValueChanged<double> onRelease;
   final bool isEnabled;
   final VoidCallback? onHoldStart;
-  final ValueChanged<double>? onHoldEnd;
+  final void Function(double seconds, String releaseReason)? onHoldEnd;
 
   const HoldReleaseButton({
     super.key,
@@ -25,7 +25,7 @@ class HoldReleaseButton extends StatefulWidget {
 }
 
 class _HoldReleaseButtonState extends State<HoldReleaseButton>
-    with TickerProviderStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver {
   bool _isPressed = false;
   bool _isReleasing = false;
   bool _isDisabledPulse = false;
@@ -87,6 +87,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _ringSize = _defaultRingSize;
     _holdTicker = createTicker((elapsed) {
       if (!mounted) return;
@@ -183,10 +184,18 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _holdTicker.dispose();
     _breathController.dispose();
     _releaseController.dispose();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state != AppLifecycleState.resumed && _isPressed) {
+      _onPressEnd('app_background');
+    }
   }
 
   @override
@@ -236,7 +245,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
     });
   }
 
-  void _onPressEnd() {
+  void _onPressEnd(String releaseReason) {
     if (_pressStartTime == null || !widget.isEnabled) return;
 
     final duration = DateTime.now().difference(_pressStartTime!);
@@ -271,7 +280,7 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
     });
 
     _pendingReleaseSeconds = seconds;
-    widget.onHoldEnd?.call(seconds);
+    widget.onHoldEnd?.call(seconds, releaseReason);
     _releaseController.duration = _releaseDuration + _releaseSettleDuration;
     _releaseController.forward(from: 0.0);
 
@@ -482,8 +491,8 @@ class _HoldReleaseButtonState extends State<HoldReleaseButton>
               _onDisabledTap();
             }
           },
-          onPointerUp: (_) => _onPressEnd(),
-          onPointerCancel: (_) => _onPressEnd(),
+          onPointerUp: (_) => _onPressEnd('completed'),
+          onPointerCancel: (_) => _onPressEnd('cancelled'),
           child: AnimatedContainer(
             duration: const Duration(milliseconds: 150),
             width: ringSize,

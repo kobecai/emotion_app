@@ -40,24 +40,26 @@ Future<void> showInfoSheet(BuildContext context) async {
                   Text('Safety & Privacy', style: AppTheme.headingStyle),
                   const SizedBox(height: 16),
                   Text(
-                    'This app is not medical advice and not for emergencies. '
-                    'If you are in the U.S. and need immediate help, call or text 988.',
+                    'This app is not medical advice and is not for emergencies. '
+                    'If you are in the U.S. and need immediate support, call or text 988.',
                     style: AppTheme.bodyStyle,
                   ),
                   const SizedBox(height: 20),
                   Text('Privacy', style: AppTheme.subtleStyle),
                   const SizedBox(height: 8),
                   Text(
-                    'Your release entries are stored locally on your device. '
-                    'If analytics are enabled, we send anonymous usage events '
-                    'without your notes or personal identifiers.',
+                    'Your notes stay on your device and are not sent to our analytics provider. '
+                    'Anonymous usage analytics are enabled by default to help improve reliability and usability. '
+                    'You can turn this off anytime below.',
                     style: AppTheme.captionStyle,
                   ),
                   const SizedBox(height: 16),
                   SwitchListTile(
                     contentPadding: EdgeInsets.zero,
                     title: const Text('Share anonymous analytics'),
-                    subtitle: const Text('Helps improve the app experience.'),
+                    subtitle: const Text(
+                      'Enabled by default. You can change this anytime.',
+                    ),
                     value: localAnalyticsEnabled,
                     onChanged: (value) async {
                       await AppSettings.setAnalyticsEnabled(value);

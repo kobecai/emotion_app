@@ -6,7 +6,7 @@ class AppSettings {
 
   static Future<bool> getAnalyticsEnabled() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_analyticsEnabledKey) ?? false;
+    return prefs.getBool(_analyticsEnabledKey) ?? true;
   }
 
   static Future<void> setAnalyticsEnabled(bool enabled) async {
